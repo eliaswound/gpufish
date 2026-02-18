@@ -37,9 +37,9 @@ def detect_spots(
         masks.append(mask_local_max)
     if threshold is None:
         print("no threshold provided, finding threshold now")
-         thresholds = _get_candidate_thresholds(pixel_values)
-         threshold = _get_spot_threshold(thresholds)
-         print("threshold: ", threshold)
+        thresholds = _get_candidate_thresholds(pixel_values)
+        threshold = _get_spot_threshold(thresholds)
+        print("threshold: ", threshold)
     else: 
         print(" using provided threshold: ", threshold)
     all_spots = []
