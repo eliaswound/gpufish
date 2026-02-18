@@ -33,25 +33,24 @@ def _get_candidate_thresholds(pixel_values):
 
 def _get_spot_threshold(thresholds):
        
-       
-       all_value_spots = []
-        minimum_threshold = float(thresholds[0])
-        for i in range(n):
-            image_filtered = images_filtered[i]
-            mask_local_max = masks[i]
-            spots, mask_spots = spots_thresholding(
-                image_filtered, mask_local_max,
-                threshold=minimum_threshold,
-                remove_duplicate=False)
-            value_spots = image_filtered[mask_spots]
-            all_value_spots.append(value_spots)
-        all_value_spots = np.concatenate(all_value_spots)
-        thresholds, count_spots = _get_spot_counts(thresholds, all_value_spots)
+    all_value_spots = []
+    minimum_threshold = float(thresholds[0])
+    for i in range(n):
+        image_filtered = images_filtered[i]
+        mask_local_max = masks[i]
+        spots, mask_spots = spots_thresholding(
+            image_filtered, mask_local_max,
+            threshold=minimum_threshold,
+            remove_duplicate=False)
+        value_spots = image_filtered[mask_spots]
+        all_value_spots.append(value_spots)
+    all_value_spots = np.concatenate(all_value_spots)
+    thresholds, count_spots = _get_spot_counts(thresholds, all_value_spots)
 
-        # select threshold where the kink of the distribution is located
-        if count_spots.size > 0:
-            threshold, _, _ = get_breaking_point(thresholds, count_spots)
-        return threshold
+    # select threshold where the kink of the distribution is located
+    if count_spots.size > 0:
+        threshold, _, _ = get_breaking_point(thresholds, count_spots)
+    return threshold
 
 
 
@@ -103,71 +102,44 @@ def get_breaking_point(x, y):
     breaking_point = float(x[i])
 
     return breaking_point, x, y
+
 def spots_thresholding(
         image,
         mask_local_max,
-        threshold,
-        remove_duplicate=True):
-    """Filter detected spots and get coordinates of the remaining spots.
+        threshold):
 
-    In order to make the thresholding robust, it should be applied to a
-    filtered image (using :func:`bigfish.stack.log_filter` for example). If
-    the local maximum is not unique (it can happen if connected pixels have
-    the same value), a connected component algorithm is applied to keep only
-    one coordinate per spot.
-
-    Parameters
-    ----------
-    image : np.ndarray
-        Image with shape (z, y, x) or (y, x).
-    mask_local_max : np.ndarray, bool
-        Mask with shape (z, y, x) or (y, x) indicating the local peaks.
-    threshold : float, int or None
-        A threshold to discriminate relevant spots from noisy blobs. If None,
-        detection is aborted with a warning.
-    remove_duplicate : bool
-        Remove potential duplicate coordinates for the same spots. Slow the
-        running.
-
-    Returns
-    -------
-    spots : np.ndarray, np.int64
-        Coordinate of the local peaks with shape (nb_peaks, 3) or
-        (nb_peaks, 2) for 3-d or 2-d images respectively.
-    mask : np.ndarray, bool
-        Mask with shape (z, y, x) or (y, x) indicating the spots.
-
-    """
     check_cupy_array(image)
     check_tiff_dtype(image)
+
     # remove peaks with a low intensity
     mask = (mask_local_max & (image > threshold))
+
     if mask.sum() == 0:
         spots = cp.array([], dtype=cp.int64).reshape((0, image.ndim))
         return spots, mask
-    if remove_duplicate:
-        # when several pixels are assigned to the same spot, keep the centroid
-        cc = label(mask)
-        local_max_regions = regionprops(cc)
-        spots = []
-        for local_max_region in tqdm(local_max_regions, desc= "checking for duplicated spots"):
-            spot = cp.array(local_max_region.centroid)
-            spots.append(spot)
-        spots = cp.stack(spots).astype(cp.int64)
 
-        # built mask again
-        mask = cp.zeros_like(mask)
-        mask[spots[:, 0], spots[:, 1]] = True
+    # when several pixels are assigned to the same spot, keep the centroid
+    cc, _ = label(mask)
 
-    else:
-        # get peak coordinates
-        spots = cp.nonzero(mask)
-        spots = np.column_stack(spots)
+    local_max_regions = regionprops(cc)
 
-    # case where no spots were detected
+    spots = []
+    for local_max_region in tqdm(local_max_regions,
+                                 desc="checking for duplicated spots"):
+        spot = cp.array(local_max_region.centroid)
+        spots.append(spot)
+
+    spots = cp.stack(spots).astype(cp.int64)
+
+    # build mask again
+    mask = cp.zeros_like(mask)
+    mask[tuple(spots.T)] = True
+
     if spots.size == 0:
-        warnings.warn("No spots were detected (threshold is {0})."
-                      .format(threshold),
-                      UserWarning)
+        warnings.warn(
+            "No spots were detected (threshold is {0}).".format(threshold),
+            UserWarning
+        )
 
     return spots, mask
+
