@@ -11,7 +11,7 @@ def detect_spots(
         spot_radius=None,
         log_kernel_size=None,
         minimum_distance=None):
-""" detect spots in image using gpu if available, otherwise use cpu
+    """ detect spots in image using gpu if available, otherwise use cpu
     Parameters:
     image:single instance of image to detect spots in, input should be np.arrary or torch.tensor
     threshold: threshold for detecting spots, if not provided, a heuristic threshold will be used
@@ -21,7 +21,7 @@ def detect_spots(
     spot_radius: radius of spots, default is None
     log_kernel_size: size of the log kernel, default is None
     minimum_distance: minimum distance between spots, default is None
-"""
+    """
     pixel_values = []
     masks = []
     image_filtered = []
