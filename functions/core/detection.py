@@ -26,14 +26,14 @@ def detect_spots(
     masks = []
     image_filtered = []
     print("detecting spots in image")
-    for item in image:
+    for item in tqdm(image, desc="filtering image"):
         # filter image using log filter
-        image_filtered = log_filter(item, log_kernel_size)
-        image_filtered.append(image_filtered)
+        log_image = log_filter(item, log_kernel_size)
+        image_filtered.append(log_image)
         # get pixels value
         pixel_values += list(image_filtered.ravel())
         # find local maximum using local maximum filter
-        mask_local_max = local_maximum_filter(image_filtered, minimum_distance)
+        mask_local_max = local_maximum_filter(log_image, minimum_distance)
         masks.append(mask_local_max)
     if threshold is None:
         print("no threshold provided, finding threshold now")
