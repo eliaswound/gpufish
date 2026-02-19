@@ -38,7 +38,7 @@ def log_filter(image, sigma):
     check_tiff_dtype(image)
     original_dtype, image_float = fit_to_float(image)
     check_sigma(sigma)
-    image_filtered = gaussian_laplace(image_float, sigma=(sigma[1],sigma[2]))
+    image_filtered = gaussian_laplace(image_float, sigma=sigma)
     image_filtered = cp.clip(-image_filtered, a_min=0, a_max=None)
     return_to_original_dtype(image_filtered, original_dtype)
     return image_filtered
@@ -76,7 +76,7 @@ def local_maximum_filter(image, min_distance):
     check_min_distance(min_distance)
     min_distance = np.ceil(min_distance).astype(image.dtype)
     kernel_size = 2 * min_distance + 1
-    image_filtered = maximum_filter(image, size=(kernel_size[1],kernel_size[2]))
+    image_filtered = maximum_filter(image, size=kernel_size)
     mask = image == image_filtered
     
     return mask
