@@ -3,9 +3,8 @@
 import numpy as np 
 import cupy as cp 
 from ..checks.check_image import check_cupy_array, fit_to_float, check_tiff_dtype, return_to_original_dtype
-from ..checks.check_inputs import check_sigma
+from ..checks.check_inputs import check_sigma, check_min_distance
 from cupyx.scipy.ndimage import gaussian_laplace, maximum_filter
-from ..checks.check_inputs import check_min_distance
 
 
 
