@@ -37,6 +37,7 @@ def log_filter(image, sigma):
     check_cupy_array(image)
     check_tiff_dtype(image)
     original_dtype, image_float = fit_to_float(image)
+    print("image_float: ", image_float.dtype)
     image_filtered = gaussian_laplace(image_float, sigma=sigma)
     image_filtered = cp.clip(-image_filtered, a_min=0, a_max=None)
     return_to_original_dtype(image_filtered, original_dtype)
