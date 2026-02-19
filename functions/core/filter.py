@@ -7,22 +7,37 @@ import json
 import os
 log_path = os.path.join(os.path.dirname(__file__), '..', '..', '.cursor', 'debug.log')
 try:
-    from ..checks.check_image import check_cupy_array, fit_to_float, check_tiff_dtype, return_to_original_dtype
+    # Import module first, then get attributes explicitly
+    from ..checks import check_image as _check_image_module
+    with open(log_path, 'a') as f:
+        f.write(json.dumps({"location":"filter.py:9","message":"check_image module imported","data":{"module_file":getattr(_check_image_module, '__file__', 'unknown'),"has_check_tiff_dtype":hasattr(_check_image_module, 'check_tiff_dtype')},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+    
+    # Import functions explicitly
+    check_cupy_array = _check_image_module.check_cupy_array
+    fit_to_float = _check_image_module.fit_to_float
+    check_tiff_dtype = _check_image_module.check_tiff_dtype
+    return_to_original_dtype = _check_image_module.return_to_original_dtype
+    
     # Verify all imports succeeded
     imports_ok = all(name in globals() for name in ['check_cupy_array', 'fit_to_float', 'check_tiff_dtype', 'return_to_original_dtype'])
     with open(log_path, 'a') as f:
-        f.write(json.dumps({"location":"filter.py:8","message":"Import check_image completed","data":{"all_imported":imports_ok,"check_tiff_dtype_in_globals":"check_tiff_dtype" in globals(),"check_tiff_dtype_callable":callable(check_tiff_dtype) if 'check_tiff_dtype' in globals() else False},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+        f.write(json.dumps({"location":"filter.py:16","message":"Import check_image completed","data":{"all_imported":imports_ok,"check_tiff_dtype_in_globals":"check_tiff_dtype" in globals(),"check_tiff_dtype_callable":callable(check_tiff_dtype) if 'check_tiff_dtype' in globals() else False},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
     if not imports_ok:
         missing = [name for name in ['check_cupy_array', 'fit_to_float', 'check_tiff_dtype', 'return_to_original_dtype'] if name not in globals()]
         with open(log_path, 'a') as f:
-            f.write(json.dumps({"location":"filter.py:8","message":"Some imports missing","data":{"missing":missing},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+            f.write(json.dumps({"location":"filter.py:16","message":"Some imports missing","data":{"missing":missing},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+        raise ImportError(f"Failed to import: {missing}")
 except ImportError as e:
     with open(log_path, 'a') as f:
-        f.write(json.dumps({"location":"filter.py:8","message":"Import check_image failed","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+        f.write(json.dumps({"location":"filter.py:9","message":"Import check_image failed","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
     raise
+except AttributeError as e:
+    with open(log_path, 'a') as f:
+        f.write(json.dumps({"location":"filter.py:9","message":"Attribute missing in check_image module","data":{"error":str(e),"error_type":type(e).__name__,"available_attrs":[x for x in dir(_check_image_module) if not x.startswith('_')]},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+    raise ImportError(f"check_tiff_dtype not found in check_image module: {e}")
 except Exception as e:
     with open(log_path, 'a') as f:
-        f.write(json.dumps({"location":"filter.py:8","message":"Unexpected error during import","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+        f.write(json.dumps({"location":"filter.py:9","message":"Unexpected error during import","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
     raise
 # #endregion
 from ..checks.check_inputs import check_sigma, check_min_distance
