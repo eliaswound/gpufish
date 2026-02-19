@@ -2,7 +2,17 @@
 # Log filter: Apply a Laplacian of Gaussian filter to a 2-d or 3-d image.
 import numpy as np 
 import cupy as cp 
-from ..checks.check_image import check_cupy_array, fit_to_float, check_tiff_dtype, return_to_original_dtype
+# #region agent log
+import json
+try:
+    from ..checks.check_image import check_cupy_array, fit_to_float, check_tiff_dtype, return_to_original_dtype
+    with open('/Users/eliasguan/Desktop/EG_PetersenLab_notes/gpufish/.cursor/debug.log', 'a') as f:
+        f.write(json.dumps({"location":"filter.py:5","message":"Import check_image successful","data":{"check_tiff_dtype_exists":callable(check_tiff_dtype) if 'check_tiff_dtype' in locals() else False},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+except ImportError as e:
+    with open('/Users/eliasguan/Desktop/EG_PetersenLab_notes/gpufish/.cursor/debug.log', 'a') as f:
+        f.write(json.dumps({"location":"filter.py:5","message":"Import check_image failed","data":{"error":str(e)},"timestamp":int(__import__('time').time()*1000),"runId":"import_check","hypothesisId":"A"})+"\n")
+    raise
+# #endregion
 from ..checks.check_inputs import check_sigma, check_min_distance
 from cupyx.scipy.ndimage import gaussian_laplace, maximum_filter
 
@@ -32,6 +42,11 @@ def log_filter(image, sigma):
 
     """
     # initialize and check inputs 
+    # #region agent log
+    import json
+    with open('/Users/eliasguan/Desktop/EG_PetersenLab_notes/gpufish/.cursor/debug.log', 'a') as f:
+        f.write(json.dumps({"location":"filter.py:36","message":"Before check_tiff_dtype call","data":{"check_tiff_dtype_in_locals":"check_tiff_dtype" in locals(),"check_tiff_dtype_in_globals":"check_tiff_dtype" in globals()},"timestamp":int(__import__('time').time()*1000),"runId":"runtime_check","hypothesisId":"B"})+"\n")
+    # #endregion
     check_cupy_array(image)
     check_tiff_dtype(image)
     original_dtype, image_float = fit_to_float(image)
