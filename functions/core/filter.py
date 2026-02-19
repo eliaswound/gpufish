@@ -6,6 +6,7 @@ import cupy as cp
 import json
 import os
 from gpufish.functions.checks.check_inputs import check_sigma, check_min_distance
+from gpufish.functions.checks.check_image import check_cupy_array, check_tiff_dtype, return_to_original_dtype
 from cupyx.scipy.ndimage import gaussian_laplace, maximum_filter
 
 
