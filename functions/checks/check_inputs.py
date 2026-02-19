@@ -1,4 +1,4 @@
-check inputs for the functions 
+# check inputs for the functions 
 def check_sigma(sigma):
     """
     Check that sigma is either a single number or a tuple of 3 numbers (z, y, x)
@@ -41,3 +41,25 @@ def check_sigma(sigma):
         )
     
     return sigma
+
+def check_min_distance(min_distance):
+    """
+    Accept a single number or a tuple of 3 numbers (z, y, x).
+    If a single number is given, convert to (d, d, d) and print a message.
+
+    Returns
+    -------
+    tuple
+        (z, y, x) minimum distances.
+    """
+    if isinstance(min_distance, (int, float)):
+        min_distance = (min_distance, min_distance, min_distance)
+        print("single min_distance input detected, using the same number on 3 axis")
+
+    if not isinstance(min_distance, tuple) or len(min_distance) != 3:
+        raise ValueError("min_distance must be a number or a tuple of 3 numbers (z, y, x)")
+
+    if not all(isinstance(v, (int, float)) for v in min_distance):
+        raise ValueError("min_distance must contain only numbers")
+
+    return min_distance

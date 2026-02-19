@@ -1,5 +1,4 @@
-check image and change image settings if needed 
-# Check image and change image settings if needed
+ # Check image and change image settings if needed
 import numpy as np
 import cupy as cp
 def check_cupy_array(image):
