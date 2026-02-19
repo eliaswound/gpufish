@@ -113,3 +113,26 @@ def return_to_original_dtype(image, dtype):
     if image.dtype == dtype:
         return image
     return image.astype(dtype)
+
+def check_same_dtype(image1, image2):
+    """
+    Check if two images have the same data type.
+    
+    Parameters
+    ----------
+    image1 : array_like
+        First image array to check.
+    image2 : array_like
+        Second image array to check.
+    
+    Raises
+    ------
+    ValueError
+        If images do not have the same dtype.
+    """
+    dtype1 = image1.dtype
+    dtype2 = image2.dtype
+    
+    if dtype1 != dtype2:
+        print("image are not the same data type please check inputs")
+        raise ValueError(f"Images have different dtypes: {dtype1} vs {dtype2}")
