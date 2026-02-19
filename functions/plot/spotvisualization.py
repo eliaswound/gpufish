@@ -1,10 +1,10 @@
-    import numpy as np
-    import cupy as cp
-    from tqdm import tqdm
-    from tifffile import imwrite
-    import os
+import numpy as np
+import cupy as cp
+from tqdm import tqdm
+from tifffile import imwrite
+import os
 
-def plot_spots_gpu(spots, image, spot_radius=4, save_plot=False, plotname='spotPlot.tif', save_path='./'):
+def plot_spots(spots, image, spot_radius=4, save_plot=False, plotname='spotPlot.tif', save_path='./'):
     """
     Plot spots on the image using GPU acceleration via CuPy.
     The output array matches the dtype of the original image.
