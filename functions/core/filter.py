@@ -4,8 +4,9 @@ import numpy as np
 import cupy as cp 
 from ..checks.check_image import check_cupy_array, fit_to_float
 from ..checks.check_inputs import check_sigma
-from cupyx.scipy.ndimage import gaussian_laplace
+from cupyx.scipy.ndimage import gaussian_laplace, maximum_filter
 from ..checks.check_image import return_to_original_dtype
+from ..checks.check_inputs import check_min_distance
 
 
 
@@ -34,6 +35,7 @@ def log_filter(image, sigma):
     """
     # initialize and check inputs 
     check_cupy_array(image)
+    check_tiff_dtype(image)
     original_dtype, image_float = fit_to_float(image)
     check_sigma(sigma)
 
@@ -41,3 +43,41 @@ def log_filter(image, sigma):
     image_filtered = cp.clip(-image_filtered, a_min=0, a_max=None)
     return_to_original_dtype(image_filtered, original_dtype)
     return image_filtered
+
+def local_maximum_filter(image, min_distance):
+    """Compute a mask to keep only local maximum, in 2-d and 3-d.
+
+    #. We apply a multidimensional maximum filter.
+    #. A pixel which has the same value in the original and filtered images
+       is a local maximum.
+
+    Several connected pixels can have the same value. In such a case, the
+    local maximum is not unique.
+
+    In order to make the detection robust, it should be applied to a
+    filtered image (using :func:`bigfish.stack.log_filter` for example).
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Image to process with shape (z, y, x) or (y, x).
+    min_distance : int, float, Tuple(int, float), List(int, float)
+        Minimum distance (in pixels) between two spots we want to be able to
+        detect separately. One value per spatial dimension (zyx or yx
+        dimensions). If it's a scalar, the same distance is applied to every
+        dimensions.
+
+    Returns
+    -------
+    mask : np.ndarray, bool
+        Mask with shape (z, y, x) or (y, x) indicating the local peaks.
+
+    """
+    check_cupy_array(image)
+    check_min_distance(min_distance)
+    min_distance = np.ceil(min_distance).astype(image.dtype)
+    kernel_size = 2 * min_distance + 1
+    image_filtered = maximum_filter(image, size=kernel_size)
+    mask = image == image_filtered
+    
+    return mask
