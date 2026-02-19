@@ -65,11 +65,23 @@ def check_min_distance(min_distance):
 
     return min_distance
 
-def check_path(path):
+def check_path(input_path):
     """
     Check if the path is a valid path.
+    Parameters
+    ----------
+    input_path : str
+        Input path to check.
+    
+    Returns
+    -------
+    None
+    Raises
+    ------
+    ValueError
+        If the path is not a valid path.
     """
-    path = Path(image_path)
+    path = Path(input_path)
     if path.exists():
         print("Path exists!")
     else:
