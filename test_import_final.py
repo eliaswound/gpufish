@@ -7,17 +7,41 @@ import sys
 import os
 import traceback
 
-# EXACTLY match your code setup
-project_root = os.path.abspath(os.path.join(os.getcwd(), "../../"))
-sys.path.append(project_root)
+# Match your code setup, but detect correct path
+current_dir = os.getcwd()
+# If we're IN gpufish directory, parent directory should be added to path
+# so that "gpufish" can be imported as a package
+if os.path.basename(current_dir) == 'gpufish' and os.path.exists(os.path.join(current_dir, 'functions')):
+    # We're IN gpufish, so parent directory should be added to path
+    project_root = os.path.abspath(os.path.join(current_dir, ".."))
+    print(f"   → Detected: running from gpufish directory")
+    print(f"   → Adding parent directory to path: {project_root}")
+    print(f"   → This allows 'import gpufish' to work")
+else:
+    # Try your original code's approach (for notebooks/subdirectories)
+    project_root = os.path.abspath(os.path.join(os.getcwd(), "../../"))
+    print(f"   → Using your code's path calculation: {project_root}")
+
+sys.path.insert(0, project_root)  # Insert at beginning for priority
 
 print("=" * 60)
-print("FINAL IMPORT TEST (exact match of your code)")
+print("FINAL IMPORT TEST")
 print("=" * 60)
-print(f"Current directory: {os.getcwd()}")
+print(f"Current directory: {current_dir}")
 print(f"Project root added to path: {project_root}")
-print(f"gpufish should be at: {os.path.join(project_root, 'gpufish')}")
-print(f"gpufish exists: {os.path.exists(os.path.join(project_root, 'gpufish'))}")
+gpufish_in_root = os.path.join(project_root, 'gpufish')
+gpufish_as_current = current_dir if os.path.basename(current_dir) == 'gpufish' else None
+
+print(f"\nVerifying setup:")
+gpufish_path = os.path.join(project_root, 'gpufish')
+if os.path.exists(gpufish_path):
+    print(f"  ✓ gpufish package found at: {gpufish_path}")
+    print(f"    → functions directory exists: {os.path.exists(os.path.join(gpufish_path, 'functions'))}")
+else:
+    print(f"  ✗ gpufish package NOT found at: {gpufish_path}")
+    if os.path.basename(current_dir) == 'gpufish':
+        print(f"  → Current directory IS gpufish: {current_dir}")
+        print(f"  → This should work - parent directory added to path")
 print()
 
 # Ensure .cursor directory exists
