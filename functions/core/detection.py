@@ -28,7 +28,7 @@ def detect_spots(
     print("detecting spots in image")
     for item in image:
         # filter image using log filter
-        image_filtered = stack.log_filter(item, log_kernel_size)
+        image_filtered = log_filter(item, log_kernel_size)
         image_filtered.append(image_filtered)
         # get pixels value
         pixel_values += list(image_filtered.ravel())
