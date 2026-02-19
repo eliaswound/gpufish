@@ -32,7 +32,7 @@ def detect_spots(
         log_image = log_filter(item, log_kernel_size)
         image_filtered.append(log_image)
         # get pixels value
-        pixel_values += list(image_filtered.ravel())
+        pixel_values += list(log_image.ravel())
         # find local maximum using local maximum filter
         mask_local_max = local_maximum_filter(log_image, minimum_distance)
         masks.append(mask_local_max)
