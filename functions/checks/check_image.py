@@ -77,7 +77,7 @@ def fit_to_float(image):
         return converted_image, original_dtype
     
     elif original_dtype == cp.float64:
-        return image, original_dtype
+        return original_dtype, image
     
     else:
         raise ValueError(f"Unsupported dtype: {original_dtype}")
