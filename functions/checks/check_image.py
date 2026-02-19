@@ -67,14 +67,14 @@ def fit_to_float(image):
     # Conversion rules
     if original_dtype in [cp.uint8, cp.uint16, cp.float16]:
         converted_image = image.astype(cp.float32)
-        return converted_image, original_dtype
+        return original_dtype, converted_image
     
     elif original_dtype == cp.float32:
-        return image, original_dtype
+        return original_dtype, image
     
     elif original_dtype == cp.uint32:
         converted_image = image.astype(cp.float64)
-        return converted_image, original_dtype
+        return original_dtype, converted_image
     
     elif original_dtype == cp.float64:
         return original_dtype, image
