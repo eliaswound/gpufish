@@ -34,7 +34,6 @@ def log_filter(image, sigma):
 
     """
     check_cupy_array(image)
-    check_tiff_dtype(image)
     original_dtype, image_float = fit_to_float(image)
     check_sigma(sigma)
 
