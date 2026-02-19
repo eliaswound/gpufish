@@ -48,12 +48,6 @@ def fit_to_float(image):
     """
     Convert image to appropriate float dtype based on input dtype.
     
-    Conversion rules:
-    - uint8, uint16, float16 → float32
-    - float32 → keep float32
-    - uint32 → float64
-    - float64 → keep float64
-    
     Parameters
     ----------
     image : cupy.ndarray
@@ -64,11 +58,8 @@ def fit_to_float(image):
     tuple : (cupy.ndarray, dtype)
         Converted float array and original dtype.
     """
-    # Check if it's a CuPy array
+    # ensure input is a CuPy array
     check_cupy_array(image)
-    
-    # Check if it's a valid TIFF dtype
-    check_tiff_dtype(image)
     
     # Store original dtype
     original_dtype = image.dtype
@@ -79,7 +70,6 @@ def fit_to_float(image):
         return converted_image, original_dtype
     
     elif original_dtype == cp.float32:
-        # Keep float32, no conversion needed
         return image, original_dtype
     
     elif original_dtype == cp.uint32:
@@ -87,12 +77,11 @@ def fit_to_float(image):
         return converted_image, original_dtype
     
     elif original_dtype == cp.float64:
-        # Keep float64, no conversion needed
         return image, original_dtype
     
     else:
-        # Should not reach here if check_tiff_dtype works correctly
         raise ValueError(f"Unsupported dtype: {original_dtype}")
+
 
 def return_to_original_dtype(image, dtype):
     """
