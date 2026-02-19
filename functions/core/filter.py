@@ -5,7 +5,7 @@ import cupy as cp
 # #region agent log
 import json
 import os
-from ..checks.check_inputs import check_sigma, check_min_distance
+from gpufish.functions.checks.check_inputs import check_sigma, check_min_distance
 from cupyx.scipy.ndimage import gaussian_laplace, maximum_filter
 
 

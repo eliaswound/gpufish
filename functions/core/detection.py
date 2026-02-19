@@ -1,8 +1,8 @@
-from .filter import log_filter
-from .filter import local_maximum_filter
-from .conventional_threshold import _get_candidate_thresholds
-from .conventional_threshold import _get_spot_threshold
-from .conventional_threshold import spots_thresholding
+from gpufish.functions.core.filter import log_filter
+from gpufish.functions.core.filter import local_maximum_filter
+from gpufish.functions.core.conventional_threshold import _get_candidate_thresholds
+from gpufish.functions.core.conventional_threshold import _get_spot_threshold
+from gpufish.functions.core.conventional_threshold import spots_thresholding
 def detect_spots(
         image,
         threshold=None,

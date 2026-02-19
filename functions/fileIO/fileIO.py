@@ -1,7 +1,7 @@
 # File IO for gpufish 
 import tifffile as tiff
 import cupy as cp
-from ..checks.check_image import check_tiff_dtype, check_cupy_array, check_same_dtype
+from gpufish.functions.checks.check_image import check_tiff_dtype, check_cupy_array, check_same_dtype
 import numpy as np
 import os
 def read_tif(file_path):

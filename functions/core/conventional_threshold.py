@@ -1,5 +1,5 @@
-from ..checks.check_image import check_cupy_array
-from ..checks.check_image import check_tiff_dtype
+from gpufish.functions.checks.check_image import check_cupy_array
+from gpufish.functions.checks.check_image import check_tiff_dtype
 from tqdm import tqdm
 from cucim.skimage.measure import label, regionprops
 import cupy as cp
