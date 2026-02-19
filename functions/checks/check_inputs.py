@@ -83,10 +83,10 @@ def check_path(input_path):
     """
     path = Path(input_path)
     if path.exists():
-        print("Path exists!")
+        print("Valid path detected")
     else:
         print("Path does not exist.")
     if path.is_file():
-        print("This is a file.")
+        print("Inputing image file")
     if path.is_dir():
-        print("This is a directory.")
+        print("Inputing directory")
