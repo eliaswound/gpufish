@@ -2,7 +2,7 @@
 # Log filter: Apply a Laplacian of Gaussian filter to a 2-d or 3-d image.
 import numpy as np 
 import cupy as cp 
-from ..checks.check_image import check_cupy_array, fit_to_float
+from ..checks.check_image import check_cupy_array, fit_to_float, check_tiff_dtype
 from ..checks.check_inputs import check_sigma
 from cupyx.scipy.ndimage import gaussian_laplace, maximum_filter
 from ..checks.check_image import return_to_original_dtype
