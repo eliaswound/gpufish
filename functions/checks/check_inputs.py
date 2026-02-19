@@ -1,4 +1,5 @@
 # check inputs for the functions 
+from pathlib import Path
 def check_sigma(sigma):
     """
     Check that sigma is either a single number or a tuple of 3 numbers (z, y, x)
@@ -63,3 +64,17 @@ def check_min_distance(min_distance):
         raise ValueError("min_distance must contain only numbers")
 
     return min_distance
+
+def check_path(path):
+    """
+    Check if the path is a valid path.
+    """
+    path = Path(image_path)
+    if path.exists():
+        print("Path exists!")
+    else:
+        print("Path does not exist.")
+    if path.is_file():
+        print("This is a file.")
+    if path.is_dir():
+        print("This is a directory.")
