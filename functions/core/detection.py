@@ -1,8 +1,8 @@
 from gpufish.functions.core.filter import log_filter
 from gpufish.functions.core.filter import local_maximum_filter
-from gpufish.functions.core.conventional_threshold import _get_candidate_thresholds
-from gpufish.functions.core.conventional_threshold import _get_spot_threshold
-from gpufish.functions.core.conventional_threshold import spots_thresholding
+from .conventional_threshold import _get_candidate_thresholds
+from .conventional_threshold import _get_spot_threshold
+from .conventional_threshold import spots_thresholding
 def detect_spots(
         image,
         threshold=None,
@@ -28,7 +28,7 @@ def detect_spots(
     print("detecting spots in image")
     for item in image:
         # filter image using log filter
-        image_filtered = log_filter(item, (log_kernel_size[1], log_kernel_size[2]))
+        image_filtered = log_filter(item, log_kernel_size)
         image_filtered.append(image_filtered)
         # get pixels value
         pixel_values += list(image_filtered.ravel())
