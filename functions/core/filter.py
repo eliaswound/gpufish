@@ -76,7 +76,7 @@ def local_maximum_filter(image, min_distance):
     check_min_distance(min_distance)
     min_distance = np.ceil(min_distance).astype(image.dtype)
     kernel_size = 2 * min_distance + 1
-    image_filtered = maximum_filter(image, size=kernel_size)
+    image_filtered = maximum_filter(image, size=(kernel_size[1],kernel_size[2]))
     mask = image == image_filtered
     
     return mask
