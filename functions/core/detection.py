@@ -3,6 +3,7 @@ from gpufish.functions.core.filter import local_maximum_filter
 from .conventional_threshold import _get_candidate_thresholds
 from .conventional_threshold import _get_spot_threshold
 from .conventional_threshold import spots_thresholding
+from tqdm import tqdm
 def detect_spots(
         image,
         threshold=None,
