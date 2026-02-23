@@ -6,10 +6,10 @@ from .conventional_threshold import spots_thresholding
 from tqdm import tqdm
 from cucim.skimage.measure import label
 from cucim.skimage.measure import regionprops
-def detect_spots(
+def regionprop_test(
         image,
-        threshold=None,
-        return_threshold=False,
+        threshold_lower = 1,
+        threshold_upper = 10,
         voxel_size=None,
         spot_radius=None,
         log_kernel_size=None,
@@ -30,10 +30,14 @@ def detect_spots(
     log_image = log_filter(image, log_kernel_size)
     pixel_values += list(log_image.ravel())
     mask_local_max = local_maximum_filter(log_image, minimum_distance)
-    mask = (mask_local_max & (image > threshold))
-    cc = label(mask)
-    local_max_regions = regionprops(cc)
-    spot = np.array(local_max_region.centroid)
+    lower_mask = (mask_local_max & (image > threshold_lower))
+    upper_mask = (mask_local_max & (image > threshold_upper))
+    lower_cc = label(lower_mask)
+    upper_cc = label(upper_mask)
+    lower_local_max_regions = regionprops(lower_cc, intensity_image=image)
+    upper_local_max_regions = regionprops(upper_cc, intensity_image=image)
+    lower_only_mask = lower_mask & (~upper_mask)
+
     # return threshold or not
     if return_threshold:
         return spot, threshold
