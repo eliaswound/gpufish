@@ -8,7 +8,7 @@ import warnings
 
 def regionprop_test_for_thresholds(
         image,
-        regionprop_names=["mean_intensity"],
+        regionprop_names=["mean_intensity","radial_symmetry","gaussian_fit","spot_count"],
         num_bins=None,
         thresholds=None,
         log_kernel_size=None,
@@ -19,14 +19,11 @@ def regionprop_test_for_thresholds(
         threshold_range=None
 ):
     """
-    Cumulative threshold binning with support for multiple regionprops.
-    Supports:
-        - mean_intensity
-        - SBR
-        - exceeding / center-mean
-        - convex_area
-        - solidity
-        - weighted_centroid_distance
+    Cumulative threshold binning with support for multiple regionprops,
+    now includes:
+        - radial_symmetry
+        - gaussian_fit
+        - spot_count
     """
 
     if isinstance(regionprop_names, str):
@@ -95,13 +92,13 @@ def regionprop_test_for_thresholds(
             rp = regionprop_name.lower()
 
             try:
+                # --- Existing regionprops ---
                 if rp == "sbr":
                     if r.mean_intensity <= 0:
                         continue
                     value = center_intensity / float(r.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    # New formula: exclude center from the mean of rest of the region
                     if r.area <= 1:
                         continue
                     value = center_intensity - ((r.mean_intensity * r.area - center_intensity) / (r.area - 1))
@@ -110,15 +107,23 @@ def regionprop_test_for_thresholds(
                     intensities = r.intensity_image[r.coords[:,0], r.coords[:,1]]
                     if np.sum(intensities) == 0:
                         continue
-
-                    wc = np.average(r.coords, axis=0, weights=intensities)  # weighted centroid
+                    wc = np.average(r.coords, axis=0, weights=intensities)
                     value = np.linalg.norm(wc - c)
-                    
 
                 elif rp in ["convex_area", "solidity"]:
                     if r.area < 4:
                         continue
                     value = getattr(r, regionprop_name)
+
+                # --- New regionprops ---
+                elif rp == "radial_symmetry":
+                    value = compute_radial_sym(r.intensity_image)  # implement this function
+
+                elif rp == "gaussian_fit":
+                    value = fit_gaussian(r.intensity_image)["sigma_avg"] # implement this function
+
+                elif rp == "spot_count":
+                    value = 1  # each valid region counts as one spot
 
                 else:
                     if not hasattr(r, regionprop_name):
@@ -146,7 +151,12 @@ def regionprop_test_for_thresholds(
         for t in thresholds:
             mask = centers >= t
             key = f"{int(float(t))}"
-            bin_results[key] = values[mask]
+
+            if rp == "spot_count":
+                # number of spots above threshold
+                bin_results[key] = int(len(values[mask]))
+            else:
+                bin_results[key] = values[mask]
 
         # Welch t-tests
         t_tests = {}
@@ -157,7 +167,7 @@ def regionprop_test_for_thresholds(
             if xp is not np:
                 a = cp.asnumpy(a)
                 b = cp.asnumpy(b)
-            if len(a) > 1 and len(b) > 1:
+            if len(a) > 1 and len(b) > 1 and rp != "spot_count":
                 t_stat, p_value = stats.ttest_ind(a, b, equal_var=False)
             else:
                 t_stat, p_value = np.nan, np.nan
@@ -167,3 +177,130 @@ def regionprop_test_for_thresholds(
         all_t_tests[regionprop_name] = t_tests
 
     return all_bin_results, all_t_tests
+
+
+def compute_radial_sym(intensity_image):
+    """
+    Compute a simple radial symmetry metric for a 3D spot.
+    
+    Parameters
+    ----------
+    intensity_image : ndarray
+        3D array of spot intensities (from regionprops.intensity_image)
+        
+    Returns
+    -------
+    radial_sym : float
+        Radial symmetry score in [0,1], 1 = perfectly symmetric
+    """
+    if intensity_image.size == 0:
+        return np.nan
+
+    # Get shape
+    z_size, y_size, x_size = intensity_image.shape
+    cz, cy, cx = (np.array(intensity_image.shape) - 1) / 2  # approximate centroid at center
+
+    # Create coordinate grids
+    zz, yy, xx = np.meshgrid(np.arange(z_size), np.arange(y_size), np.arange(x_size), indexing='ij')
+    distances = np.sqrt((zz - cz)**2 + (yy - cy)**2 + (xx - cx)**2)
+
+    # Flatten arrays
+    distances = distances.flatten()
+    intensities = intensity_image.flatten()
+
+    if np.sum(intensities) == 0:
+        return np.nan
+
+    # Bin distances (radial bins)
+    num_bins = max(3, int(np.ceil(np.max(distances))))
+    radial_bins = np.linspace(0, np.max(distances), num_bins + 1)
+    bin_indices = np.digitize(distances, radial_bins) - 1
+
+    radial_mean = np.zeros(num_bins)
+    radial_std = np.zeros(num_bins)
+
+    for i in range(num_bins):
+        mask = bin_indices == i
+        if np.sum(mask) == 0:
+            radial_mean[i] = 0
+            radial_std[i] = 0
+        else:
+            vals = intensities[mask]
+            radial_mean[i] = np.mean(vals)
+            radial_std[i] = np.std(vals)
+
+    # Avoid divide by zero
+    radial_mean[radial_mean == 0] = np.nan
+
+    # Radial symmetry score: 1 - mean(CV) across radial bins
+    radial_cv = radial_std / radial_mean
+    radial_sym = 1 - np.nanmean(radial_cv)
+
+    # Clamp to [0,1]
+    radial_sym = max(0.0, min(1.0, radial_sym))
+
+    return radial_sym
+
+import numpy as np
+from scipy.optimize import curve_fit
+
+def fit_gaussian(intensity_image):
+    """
+    Fit a 2D Gaussian to the maximum-intensity z-slice of a 3D spot.
+
+    Parameters
+    ----------
+    intensity_image : ndarray
+        3D array of spot intensities (from regionprops.intensity_image)
+
+    Returns
+    -------
+    result : dict
+        Dictionary containing:
+            - 'amplitude': peak intensity A
+            - 'sigma_x': Gaussian width in x
+            - 'sigma_y': Gaussian width in y
+            - 'background': offset B
+            - 'sigma_avg': average width (sigma_x + sigma_y)/2
+    """
+    if intensity_image.size == 0:
+        return {'amplitude': np.nan, 'sigma_x': np.nan, 'sigma_y': np.nan,
+                'background': np.nan, 'sigma_avg': np.nan}
+
+    # Find the z-slice with maximum total intensity
+    z_sum = intensity_image.sum(axis=(1,2))
+    z_idx = np.argmax(z_sum)
+    slice2d = intensity_image[z_idx]
+
+    # Coordinates
+    y = np.arange(slice2d.shape[0])
+    x = np.arange(slice2d.shape[1])
+    xx, yy = np.meshgrid(x, y)
+
+    # Flatten arrays
+    xdata = np.vstack((xx.ravel(), yy.ravel()))
+    ydata = slice2d.ravel()
+
+    # 2D Gaussian function
+    def gaussian_2d(coords, A, x0, y0, sigma_x, sigma_y, B):
+        x, y = coords
+        return A * np.exp(-((x-x0)**2/(2*sigma_x**2) + (y-y0)**2/(2*sigma_y**2))) + B
+
+    # Initial guess
+    A0 = slice2d.max() - slice2d.min()
+    x0_0 = slice2d.shape[1] / 2
+    y0_0 = slice2d.shape[0] / 2
+    sigma_x0 = slice2d.shape[1] / 4
+    sigma_y0 = slice2d.shape[0] / 4
+    B0 = slice2d.min()
+    p0 = (A0, x0_0, y0_0, sigma_x0, sigma_y0, B0)
+
+    try:
+        popt, _ = curve_fit(gaussian_2d, xdata, ydata, p0=p0, maxfev=5000)
+        A, x0, y0, sigma_x, sigma_y, B = popt
+        sigma_avg = (sigma_x + sigma_y) / 2
+    except Exception:
+        A = sigma_x = sigma_y = B = sigma_avg = np.nan
+
+    return {'amplitude': A, 'sigma_x': sigma_x, 'sigma_y': sigma_y,
+            'background': B, 'sigma_avg': sigma_avg}
