@@ -15,7 +15,7 @@ def regionprop_test_for_thresholds(
         minimum_distance=None,
         voxel_size=None,
         spot_radius=None,
-        min_volume_thresh=0.6
+        min_volume_thresh=0.6,
         threshold_range = None
 ):
     """
