@@ -84,8 +84,9 @@ def plot_all_threshod_test_results(
         # -----------------------------
         # Plot
         # -----------------------------
-        # Larger, higher-DPI figure to reduce crowding
-        plt.figure(figsize=(20, 6), dpi=200)
+        # Dynamically scale figure width with number of bins so stars/labels spread out
+        fig_width = min(40, max(12, len(bin_keys) * 0.25))
+        plt.figure(figsize=(fig_width, 6), dpi=200)
         sns.boxplot(data=data)
         plt.plot(
             np.arange(len(means)),
@@ -163,14 +164,10 @@ def plot_all_threshod_test_results(
         # -----------------------------
         # Final formatting
         # -----------------------------
-        # Thin out x-axis labels when there are many bins
-        if len(bin_keys) > 40:
-            label_step = 2  # show every 2nd label
-        else:
-            label_step = 1
-
+        # X-axis: keep original bin labels, but show every other label to reduce crowding
+        label_step = 2
         tick_positions = np.arange(0, len(bin_keys), label_step)
-        tick_labels = [bin_keys[i] for i in range(0, len(bin_keys), label_step)]
+        tick_labels = [bin_keys[i] for i in tick_positions]
 
         plt.xticks(
             ticks=tick_positions,
