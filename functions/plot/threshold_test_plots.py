@@ -172,7 +172,7 @@ def plot_all_threshod_test_results(
         plt.xticks(
             ticks=tick_positions,
             labels=tick_labels,
-            rotation=60,
+            rotation=0,
             ha='right',
             fontsize=8,
         )
