@@ -1,5 +1,5 @@
+import numpy as np
 import cupy as cp
-import numpy as np 
 from tqdm import tqdm
 from cucim.skimage.measure import label, regionprops
 from gpufish.functions.core.filter import log_filter, local_maximum_filter
@@ -16,14 +16,14 @@ def regionprop_test_for_thresholds(
         voxel_size=None,
         spot_radius=None,
         min_volume_thresh=0.6,
-        threshold_range = None
+        threshold_range=None
 ):
     """
     Cumulative threshold binning with support for multiple regionprops.
     Supports:
         - mean_intensity
         - SBR
-        - exceeding
+        - exceeding / center-mean
         - convex_area
         - solidity
         - weighted_centroid_distance
@@ -34,7 +34,6 @@ def regionprop_test_for_thresholds(
 
     # Backend detection
     try:
-        import cupy as cp
         xp = cp.get_array_module(image)
     except Exception:
         xp = np
@@ -45,7 +44,6 @@ def regionprop_test_for_thresholds(
     cc = label(mask_local_max)
 
     warnings.filterwarnings("ignore")
-
     regions = regionprops(cc, intensity_image=log_image)
 
     # Volume filtering
@@ -53,13 +51,7 @@ def regionprop_test_for_thresholds(
         raise ValueError("voxel_size and spot_radius must be provided")
 
     spot_radius_pixel = xp.array(spot_radius) / xp.array(voxel_size)
-    theoretical_volume = (
-        4/3 * np.pi *
-        float(spot_radius_pixel[0]) *
-        float(spot_radius_pixel[1]) *
-        float(spot_radius_pixel[2])
-    )
-
+    theoretical_volume = 4/3 * np.pi * float(spot_radius_pixel[0]) * float(spot_radius_pixel[1]) * float(spot_radius_pixel[2])
     min_volume_pixels = min_volume_thresh * theoretical_volume
 
     print(f"Theoretical spot volume (pixels): {theoretical_volume:.2f}")
@@ -69,12 +61,10 @@ def regionprop_test_for_thresholds(
     if thresholds is None:
         if num_bins is None:
             raise ValueError("Provide num_bins or thresholds")
-        if threshold_range is None:    
-            min_val = float(xp.min(image))
-            max_val = float(xp.max(image))
+        if threshold_range is None:
+            min_val, max_val = float(xp.min(image)), float(xp.max(image))
         else:
-            min_val = threshold_range[0]
-            max_val = threshold_range[1]
+            min_val, max_val = threshold_range
         thresholds = xp.linspace(min_val, max_val, num_bins, endpoint=False)
 
     thresholds = xp.asarray(thresholds)
@@ -83,7 +73,6 @@ def regionprop_test_for_thresholds(
     all_t_tests = {}
 
     for regionprop_name in regionprop_names:
-
         centers = []
         values = []
 
@@ -103,7 +92,6 @@ def regionprop_test_for_thresholds(
                 continue
 
             center_intensity = float(image[coords])
-
             rp = regionprop_name.lower()
 
             try:
@@ -113,33 +101,27 @@ def regionprop_test_for_thresholds(
                     value = center_intensity / float(r.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    value = center_intensity - float(r.mean_intensity)
+                    # New formula: exclude center from the mean of rest of the region
+                    if r.area <= 1:
+                        continue
+                    value = center_intensity - ((r.mean_intensity * r.area - center_intensity) / (r.area - 1))
 
                 elif rp == "weighted_centroid_distance":
-
-                    if r.area < 1:
+                    if r.area < 1 or not hasattr(r, "weighted_centroid"):
                         continue
-
                     wc = np.array(r.weighted_centroid)
-                    if np.all(np.isfinite(wc)):
-                        value = np.linalg.norm(wc - c)
-                    else:
+                    if not np.all(np.isfinite(wc)):
                         continue
-
                     value = np.linalg.norm(wc - c)
 
                 elif rp in ["convex_area", "solidity"]:
-
                     if r.area < 4:
                         continue
-
                     value = getattr(r, regionprop_name)
 
                 else:
-
                     if not hasattr(r, regionprop_name):
                         continue
-
                     value = getattr(r, regionprop_name)
 
             except Exception:
@@ -168,21 +150,16 @@ def regionprop_test_for_thresholds(
         # Welch t-tests
         t_tests = {}
         keys = list(bin_results.keys())
-
         for i in range(len(keys) - 1):
-
             a = bin_results[keys[i]]
             b = bin_results[keys[i + 1]]
-
             if xp is not np:
-                a = xp.asnumpy(a)
-                b = xp.asnumpy(b)
-
+                a = cp.asnumpy(a)
+                b = cp.asnumpy(b)
             if len(a) > 1 and len(b) > 1:
                 t_stat, p_value = stats.ttest_ind(a, b, equal_var=False)
             else:
                 t_stat, p_value = np.nan, np.nan
-
             t_tests[f"{keys[i]} vs {keys[i+1]}"] = (t_stat, p_value)
 
         all_bin_results[regionprop_name] = bin_results
