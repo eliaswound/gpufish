@@ -84,12 +84,18 @@ def plot_all_threshod_test_results(
         # -----------------------------
         # Plot
         # -----------------------------
-        plt.figure(figsize=(12, 6))
+        # Larger, higher-DPI figure to reduce crowding
+        plt.figure(figsize=(20, 6), dpi=200)
         sns.boxplot(data=data)
-        plt.plot(np.arange(len(means)), means,
-                 marker='o', color='red',
-                 linestyle='-', linewidth=2,
-                 label='Mean')
+        plt.plot(
+            np.arange(len(means)),
+            means,
+            marker='o',
+            color='red',
+            linestyle='-',
+            linewidth=2,
+            label='Mean'
+        )
 
         if use_log:
             plt.yscale('log')
@@ -102,8 +108,10 @@ def plot_all_threshod_test_results(
 
             y_max = np.nanmax([np.nanmax(d) for d in data])
             y_min = np.nanmin([np.nanmin(d) for d in data])
-            step = ((np.log10(y_max+1e-12) - np.log10(y_min+1e-12)) * 0.05
-                    if use_log else (y_max - y_min) * 0.05)
+            step = (
+                (np.log10(y_max + 1e-12) - np.log10(y_min + 1e-12)) * 0.05
+                if use_log else (y_max - y_min) * 0.05
+            )
 
             for i in range(len(bin_keys) - 1):
 
@@ -123,31 +131,61 @@ def plot_all_threshod_test_results(
                     stars = None
 
                 if stars:
-                    x1, x2 = i, i+1
-                    y = max(np.nanmax(data[i]), np.nanmax(data[i+1])) + step
+                    x1, x2 = i, i + 1
 
-                    plt.plot([x1, x1, x2, x2],
-                             [y, y+step, y+step, y],
-                             color='black')
+                    # Push annotation further away from boxes for readability
+                    y_pair_max = max(np.nanmax(data[i]), np.nanmax(data[i + 1]))
+                    y = y_pair_max + 2 * step  # previously + step
 
-                    plt.text((x1+x2)/2, y+step,
-                             stars,
-                             ha='center',
-                             va='bottom')
+                    plt.plot(
+                        [x1, x1, x2, x2],
+                        [y, y + step, y + step, y],
+                        color='black'
+                    )
+
+                    plt.text(
+                        (x1 + x2) / 2,
+                        y + step,
+                        stars,
+                        ha='center',
+                        va='bottom',
+                        fontsize=8,  # smaller label for less clutter
+                    )
+
+            # Expand y-limits so stars are not stuck at top border
+            ax = plt.gca()
+            ymin, ymax = ax.get_ylim()
+            if use_log:
+                ax.set_ylim(ymin, ymax * 1.3)
+            else:
+                ax.set_ylim(ymin, ymax + (ymax - ymin) * 0.3)
 
         # -----------------------------
         # Final formatting
         # -----------------------------
-        plt.xticks(ticks=np.arange(len(bin_keys)),
-                   labels=bin_keys,
-                   rotation=45)
+        # Thin out x-axis labels when there are many bins
+        if len(bin_keys) > 40:
+            label_step = 2  # show every 2nd label
+        else:
+            label_step = 1
+
+        tick_positions = np.arange(0, len(bin_keys), label_step)
+        tick_labels = [bin_keys[i] for i in range(0, len(bin_keys), label_step)]
+
+        plt.xticks(
+            ticks=tick_positions,
+            labels=tick_labels,
+            rotation=60,
+            ha='right',
+            fontsize=8,
+        )
 
         plt.xlabel("Intensity Bins")
         plt.ylabel(rp_name)
-        plt.title(f"Binned Analysis: {rp_name}")
-
+        title = f"Binned Analysis: {rp_name}"
         if pooled:
-            plt.title(f"Binned Analysis: {rp_name} (pooled to ≤{max_bins} bins)")
+            title += f" (pooled to ≤{max_bins} bins)"
+        plt.title(title)
 
         plt.legend()
         plt.tight_layout()

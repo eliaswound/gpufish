@@ -16,6 +16,7 @@ def regionprop_test_for_thresholds(
         voxel_size=None,
         spot_radius=None,
         min_volume_thresh=0.6
+        threshold_range = None
 ):
     """
     Cumulative threshold binning with support for multiple regionprops.
@@ -68,8 +69,12 @@ def regionprop_test_for_thresholds(
     if thresholds is None:
         if num_bins is None:
             raise ValueError("Provide num_bins or thresholds")
-        min_val = float(xp.min(image))
-        max_val = float(xp.max(image))
+        if threshold_range is None:    
+            min_val = float(xp.min(image))
+            max_val = float(xp.max(image))
+        else:
+            min_val = threshold_range[0]
+            max_val = threshold_range[1]
         thresholds = xp.linspace(min_val, max_val, num_bins, endpoint=False)
 
     thresholds = xp.asarray(thresholds)
