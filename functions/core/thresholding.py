@@ -107,11 +107,8 @@ def regionprop_test_for_thresholds(
                 elif rp == "weighted_centroid_distance":
                     if not hasattr(r, "weighted_centroid"):
                         continue
-                    print(c)
                     wc = np.asarray(region.weighted_centroid, dtype=float)
                     np_c  = np.asarray(region.centroid, dtype=float)
-                    print(wc)
-                    print(np_c)
                     if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(c))):
                         continue
                     value = np.linalg.norm(wc - np_c)
