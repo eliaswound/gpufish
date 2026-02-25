@@ -108,10 +108,12 @@ def regionprop_test_for_thresholds(
                     if not hasattr(r, "weighted_centroid"):
                         continue
                     wc = np.asarray(region.weighted_centroid, dtype=float)
-                    c  = np.asarray(region.centroid, dtype=float)
+                    np_c  = np.asarray(region.centroid, dtype=float)
+                    print(wc)
+                    print(np_c)
                     if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(c))):
                         continue
-                    value = np.linalg.norm(wc - c)
+                    value = np.linalg.norm(wc - np_c)
                     print(value)
                 elif rp in ["convex_area", "solidity"]:
                     if r.area < 4:
