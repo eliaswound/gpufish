@@ -109,6 +109,7 @@ def regionprop_test_for_thresholds(
                         continue
                     wc = np.asarray(region.weighted_centroid, dtype=float)
                     np_c  = np.asarray(region.centroid, dtype=float)
+                    print(region.weighted_centroid)
                     print(wc)
                     if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(c))):
                         continue
