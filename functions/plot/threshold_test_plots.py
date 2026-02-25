@@ -6,7 +6,7 @@ import os
 import math
 
 
-def plot_all_threshod_test_results(
+ddef plot_all_threshold_test_results(
     all_bin_results,
     all_t_tests,
     alpha=0.05,
@@ -17,9 +17,9 @@ def plot_all_threshod_test_results(
 ):
     """
     Fast plotting function.
-    Uses precomputed t-tests.
+    Uses precomputed t-tests if available.
     Pools bins only for visualization if bin count > max_bins.
-    Disables significance stars when pooling occurs.
+    Skips significance stars for 'spot_count'.
     """
 
     sns.set(style="whitegrid")
@@ -51,11 +51,8 @@ def plot_all_threshod_test_results(
 
             for i in range(0, original_bin_count, pool_size):
                 chunk = data[i:i + pool_size]
-
-                # lightweight merge
                 merged = np.concatenate(chunk) if len(chunk) > 0 else np.array([])
                 pooled_data.append(merged)
-
                 pooled_keys.append(bin_keys[i])
 
             data = pooled_data
@@ -84,7 +81,6 @@ def plot_all_threshod_test_results(
         # -----------------------------
         # Plot
         # -----------------------------
-        # Dynamically scale figure width with number of bins so stars/labels spread out
         fig_width = min(40, max(12, len(bin_keys) * 0.25))
         plt.figure(figsize=(fig_width, 6), dpi=200)
         sns.boxplot(data=data)
@@ -102,9 +98,9 @@ def plot_all_threshod_test_results(
             plt.yscale('log')
 
         # -----------------------------
-        # Add significance stars ONLY if not pooled
+        # Add significance stars ONLY if not pooled AND not 'spot_count'
         # -----------------------------
-        if not pooled:
+        if not pooled and rp_name != "spot_count":
             t_tests = all_t_tests.get(rp_name, {})
 
             y_max = np.nanmax([np.nanmax(d) for d in data])
@@ -115,7 +111,6 @@ def plot_all_threshod_test_results(
             )
 
             for i in range(len(bin_keys) - 1):
-
                 key = f"{bin_keys[i]} vs {bin_keys[i+1]}"
                 t_stat, p_value = t_tests.get(key, (np.nan, np.nan))
 
@@ -133,25 +128,11 @@ def plot_all_threshod_test_results(
 
                 if stars:
                     x1, x2 = i, i + 1
-
-                    # Push annotation further away from boxes for readability
                     y_pair_max = max(np.nanmax(data[i]), np.nanmax(data[i + 1]))
-                    y = y_pair_max + 2 * step  # previously + step
+                    y = y_pair_max + 2 * step
 
-                    plt.plot(
-                        [x1, x1, x2, x2],
-                        [y, y + step, y + step, y],
-                        color='black'
-                    )
-
-                    plt.text(
-                        (x1 + x2) / 2,
-                        y + step,
-                        stars,
-                        ha='center',
-                        va='bottom',
-                        fontsize=8,  # smaller label for less clutter
-                    )
+                    plt.plot([x1, x1, x2, x2], [y, y + step, y + step, y], color='black')
+                    plt.text((x1 + x2)/2, y + step, stars, ha='center', va='bottom', fontsize=8)
 
             # Expand y-limits so stars are not stuck at top border
             ax = plt.gca()
@@ -164,19 +145,11 @@ def plot_all_threshod_test_results(
         # -----------------------------
         # Final formatting
         # -----------------------------
-        # X-axis: keep original bin labels, but show every other label to reduce crowding
         label_step = 2
         tick_positions = np.arange(0, len(bin_keys), label_step)
         tick_labels = [bin_keys[i] for i in tick_positions]
 
-        plt.xticks(
-            ticks=tick_positions,
-            labels=tick_labels,
-            rotation=0,
-            ha='right',
-            fontsize=8,
-        )
-
+        plt.xticks(ticks=tick_positions, labels=tick_labels, rotation=0, ha='right', fontsize=8)
         plt.xlabel("Intensity Bins")
         plt.ylabel(rp_name)
         title = f"Binned Analysis: {rp_name}"
