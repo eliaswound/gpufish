@@ -6,7 +6,7 @@ import os
 import math
 
 
-ddef plot_all_threshold_test_results(
+def plot_all_threshold_test_results(
     all_bin_results,
     all_t_tests,
     alpha=0.05,
