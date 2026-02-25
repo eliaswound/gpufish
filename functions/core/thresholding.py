@@ -42,7 +42,7 @@ def regionprop_test_for_thresholds(
     cc = label(mask_local_max)
 
     warnings.filterwarnings("ignore")
-    regions = regionprops(cc, intensity_image=log_image)
+    regions = regionprops(cc, intensity_image=image)
 
     # Volume filtering
     if voxel_size is None or spot_radius is None:
@@ -113,7 +113,7 @@ def regionprop_test_for_thresholds(
                     if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(c))):
                         continue
                     value = float(cp.linalg.norm(wc - c).get())
-                    print(value)
+                    
                 elif rp in ["convex_area", "solidity"]:
                     if r.area < 4:
                         continue
@@ -270,43 +270,34 @@ def compute_radial_sym(intensity_image):
 
 
 def fit_gaussian(intensity_image):
-    """
-    Fit a 2D Gaussian to the maximum-intensity z-slice of a 3D spot.
+    import numpy as np
+    from scipy.optimize import curve_fit
 
-    Parameters
-    ----------
-    intensity_image : ndarray
-        3D array of spot intensities (from regionprops.intensity_image)
+    # Move to CPU if needed
+    intensity_image = intensity_image.get() if hasattr(intensity_image, "get") else intensity_image
 
-    Returns
-    -------
-    result : dict
-        Dictionary containing:
-            - 'amplitude': peak intensity A
-            - 'sigma_x': Gaussian width in x
-            - 'sigma_y': Gaussian width in y
-            - 'background': offset B
-            - 'sigma_avg': average width (sigma_x + sigma_y)/2
-    """
-    if intensity_image.size == 0:
+    if intensity_image.size <= 1:
         return {'amplitude': np.nan, 'sigma_x': np.nan, 'sigma_y': np.nan,
                 'background': np.nan, 'sigma_avg': np.nan}
 
-    # Find the z-slice with maximum total intensity
+    # Maximum-intensity z-slice
     z_sum = intensity_image.sum(axis=(1,2))
     z_idx = np.argmax(z_sum)
     slice2d = intensity_image[z_idx]
+
+    if slice2d.max() <= 0:
+        return {'amplitude': np.nan, 'sigma_x': np.nan, 'sigma_y': np.nan,
+                'background': np.nan, 'sigma_avg': np.nan}
 
     # Coordinates
     y = np.arange(slice2d.shape[0])
     x = np.arange(slice2d.shape[1])
     xx, yy = np.meshgrid(x, y)
 
-    # Flatten arrays
     xdata = np.vstack((xx.ravel(), yy.ravel()))
     ydata = slice2d.ravel()
 
-    # 2D Gaussian function
+    # 2D Gaussian
     def gaussian_2d(coords, A, x0, y0, sigma_x, sigma_y, B):
         x, y = coords
         return A * np.exp(-((x-x0)**2/(2*sigma_x**2) + (y-y0)**2/(2*sigma_y**2))) + B
@@ -317,7 +308,7 @@ def fit_gaussian(intensity_image):
     y0_0 = slice2d.shape[0] / 2
     sigma_x0 = slice2d.shape[1] / 4
     sigma_y0 = slice2d.shape[0] / 4
-    B0 = slice2d.min()
+    B0 = np.min(slice2d)
     p0 = (A0, x0_0, y0_0, sigma_x0, sigma_y0, B0)
 
     try:
