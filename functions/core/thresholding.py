@@ -106,8 +106,11 @@ def regionprop_test_for_thresholds(
 
                 elif rp == "weighted_centroid_distance":
                     if not hasattr(r, "weighted_centroid"):
+                        print(f"Warning: No weighted centroid for region {r.label}")
                         continue
+                    print (r.weighted_centroid)
                     value = np.linalg.norm(r.weighted_centroid - c)
+                    print(value)
                 elif rp in ["convex_area", "solidity"]:
                     if r.area < 4:
                         continue
