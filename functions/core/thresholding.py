@@ -171,23 +171,35 @@ def regionprop_test_for_thresholds(
                     bin_results[key] = xp.array([])  # empty array if no spots pass
 
 
-        # Welch t-tests
+        # --- Safe Welch t-test / spot_count handling ---
         t_tests = {}
         keys = list(bin_results.keys())
-        for i in range(len(keys) - 1):
-            a = bin_results[keys[i]]
-            b = bin_results[keys[i + 1]]
-            if xp is not np:
-                a = cp.asnumpy(a)
-                b = cp.asnumpy(b)
-            if len(a) > 1 and len(b) > 1 and rp != "spot_count":
-                t_stat, p_value = stats.ttest_ind(a, b, equal_var=False)
-            else:
-                t_stat, p_value = np.nan, np.nan
-            t_tests[f"{keys[i]} vs {keys[i+1]}"] = (t_stat, p_value)
 
-        all_bin_results[regionprop_name] = bin_results
-        all_t_tests[regionprop_name] = t_tests
+        for i in range(len(keys) - 1):
+            if rp == "spot_count":
+                # for spot_count, just assign 1
+                t_stat, p_value = 1.0, 1.0
+            else:
+                a = bin_results[keys[i]]
+                b = bin_results[keys[i + 1]]
+
+                # convert to numpy if CuPy
+                if xp is not np:
+                    if isinstance(a, cp.ndarray):
+                        a = cp.asnumpy(a)
+                    if isinstance(b, cp.ndarray):
+                        b = cp.asnumpy(b)
+
+                # ensure arrays
+                a = np.atleast_1d(a)
+                b = np.atleast_1d(b)
+
+                if len(a) > 1 and len(b) > 1:
+                    t_stat, p_value = stats.ttest_ind(a, b, equal_var=False)
+                else:
+                    t_stat, p_value = np.nan, np.nan
+
+    t_tests[f"{keys[i]} vs {keys[i+1]}"] = (t_stat, p_value)
 
     return all_bin_results, all_t_tests
 
