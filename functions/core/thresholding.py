@@ -5,6 +5,7 @@ from cucim.skimage.measure import label, regionprops
 from gpufish.functions.core.filter import log_filter, local_maximum_filter
 from scipy import stats
 import warnings
+from scipy.optimize import curve_fit
 
 def regionprop_test_for_thresholds(
         image,
@@ -147,17 +148,28 @@ def regionprop_test_for_thresholds(
         centers = xp.asarray(centers)
         values = xp.asarray(values)
 
-        # Cumulative binning
+        # --- Corrected Cumulative binning ---
         bin_results = {}
+
         for t in thresholds:
-            mask = centers >= t
             key = f"{int(float(t))}"
 
-            if rp == "spot_count":
-                # number of spots above threshold
-                bin_results[key] = int(len(values[mask]))
+            # Determine mask based on metric type
+            if rp == "mean_intensity":
+                mask = centers >= t
             else:
-                bin_results[key] = values[mask]
+                mask = values >= t
+
+            # Spot count metric: store number of spots above threshold
+            if rp == "spot_count":
+                bin_results[key] = int(np.sum(mask))
+            else:
+                # For other metrics, store the actual values
+                if np.any(mask):
+                    bin_results[key] = values[mask]
+                else:
+                    bin_results[key] = xp.array([])  # empty array if no spots pass
+
 
         # Welch t-tests
         t_tests = {}
@@ -242,8 +254,6 @@ def compute_radial_sym(intensity_image):
 
     return radial_sym
 
-import numpy as np
-from scipy.optimize import curve_fit
 
 def fit_gaussian(intensity_image):
     """
