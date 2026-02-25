@@ -5,6 +5,7 @@ from cucim.skimage.measure import label, regionprops
 from gpufish.functions.core.filter import log_filter, local_maximum_filter
 from scipy import stats
 import warnings
+from scipy.optimize import curve_fit
 
 def regionprop_test_for_thresholds(
         image,
@@ -147,35 +148,58 @@ def regionprop_test_for_thresholds(
         centers = xp.asarray(centers)
         values = xp.asarray(values)
 
-        # Cumulative binning
+        # --- Corrected Cumulative binning ---
         bin_results = {}
+
         for t in thresholds:
-            mask = centers >= t
             key = f"{int(float(t))}"
 
-            if rp == "spot_count":
-                # number of spots above threshold
-                bin_results[key] = int(len(values[mask]))
+            # Determine mask based on metric type
+            if rp == "mean_intensity":
+                mask = centers >= t
             else:
-                bin_results[key] = values[mask]
+                mask = values >= t
 
-        # Welch t-tests
+            # Spot count metric: store number of spots above threshold
+            if rp == "spot_count":
+                bin_results[key] = int(np.sum(mask))
+            else:
+                # For other metrics, store the actual values
+                if np.any(mask):
+                    bin_results[key] = values[mask]
+                else:
+                    bin_results[key] = xp.array([])  # empty array if no spots pass
+
+
+        # --- Safe Welch t-test / spot_count handling ---
         t_tests = {}
         keys = list(bin_results.keys())
-        for i in range(len(keys) - 1):
-            a = bin_results[keys[i]]
-            b = bin_results[keys[i + 1]]
-            if xp is not np:
-                a = cp.asnumpy(a)
-                b = cp.asnumpy(b)
-            if len(a) > 1 and len(b) > 1 and rp != "spot_count":
-                t_stat, p_value = stats.ttest_ind(a, b, equal_var=False)
-            else:
-                t_stat, p_value = np.nan, np.nan
-            t_tests[f"{keys[i]} vs {keys[i+1]}"] = (t_stat, p_value)
 
-        all_bin_results[regionprop_name] = bin_results
-        all_t_tests[regionprop_name] = t_tests
+        for i in range(len(keys) - 1):
+            if rp == "spot_count":
+                # for spot_count, just assign 1
+                t_stat, p_value = 1.0, 1.0
+            else:
+                a = bin_results[keys[i]]
+                b = bin_results[keys[i + 1]]
+
+                # convert to numpy if CuPy
+                if xp is not np:
+                    if isinstance(a, cp.ndarray):
+                        a = cp.asnumpy(a)
+                    if isinstance(b, cp.ndarray):
+                        b = cp.asnumpy(b)
+
+                # ensure arrays
+                a = np.atleast_1d(a)
+                b = np.atleast_1d(b)
+
+                if len(a) > 1 and len(b) > 1:
+                    t_stat, p_value = stats.ttest_ind(a, b, equal_var=False)
+                else:
+                    t_stat, p_value = np.nan, np.nan
+
+    t_tests[f"{keys[i]} vs {keys[i+1]}"] = (t_stat, p_value)
 
     return all_bin_results, all_t_tests
 
@@ -242,8 +266,6 @@ def compute_radial_sym(intensity_image):
 
     return radial_sym
 
-import numpy as np
-from scipy.optimize import curve_fit
 
 def fit_gaussian(intensity_image):
     """
