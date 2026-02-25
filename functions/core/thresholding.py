@@ -104,11 +104,12 @@ def regionprop_test_for_thresholds(
                     value = center_intensity - ((r.mean_intensity * r.area - center_intensity) / (r.area - 1))
 
                 elif rp == "weighted_centroid_distance":
-                    intensities = r.intensity_image[r.coords[:,0], r.coords[:,1]]
-                    if np.sum(intensities) == 0:
-                        continue
-                    wc = np.average(r.coords, axis=0, weights=intensities)
-                    value = np.linalg.norm(wc - c)
+                    coords = np.array(np.nonzero(r.intensity_image)).T  # local coordinates in patch
+                    intensities = r.intensity_image[coords[:,0], coords[:,1], coords[:,2]]
+                    wc = np.average(coords, axis=0, weights=intensities)
+                    # Then convert wc to global coordinates if needed:
+                    wc_global = wc + np.array(r.bbox[:3])
+                    value = np.linalg.norm(wc_global - c)
 
                 elif rp in ["convex_area", "solidity"]:
                     if r.area < 4:
