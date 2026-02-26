@@ -94,9 +94,10 @@ def regionprop_test_for_thresholds(
                     value = center_intensity / float(r.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    if r.area <= 1:
-                        continue
-                    value = center_intensity - ((r.mean_intensity * r.area - center_intensity) / (r.area - 1))
+                    if r.area > 1:
+                        value = center_intensity - ((r.mean_intensity * r.area - center_intensity) / (r.area - 1))
+                    else: 
+                        value = 0 
 
                 elif rp == "weighted_centroid_distance":
                     if not hasattr(r, "weighted_centroid"):

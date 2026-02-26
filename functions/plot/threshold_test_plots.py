@@ -61,7 +61,8 @@ def plot_all_threshold_test_results(
         # -----------------------------
         # Remove negative values (clean log behavior)
         # -----------------------------
-        data = [d[d > 0] if len(d) > 0 else np.array([1e-12]) for d in data]
+        if rp_name != "spot_count":
+            data = [d[d > 0] if len(d) > 0 else np.array([1e-12]) for d in data]
 
         valid_arrays = [d for d in data if len(d) > 0]
         if len(valid_arrays) == 0:
