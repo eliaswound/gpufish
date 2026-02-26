@@ -121,7 +121,11 @@ def regionprop_test_for_thresholds(
 
                 elif rp == "spot_count":
                     value = 1  # each region counts as one spot
-
+                elif rp == "roundness":
+                    if r.perimeter > 0:
+                        value = 4 * np.pi * r.area / (r.perimeter ** 2)
+                    else:
+                        value = np.nan
                 else:
                     if not hasattr(r, regionprop_name):
                         continue
