@@ -5,8 +5,6 @@ from scipy import stats
 from skimage.measure import label, regionprops
 import warnings
 from gpufish.functions.core.filter import log_filter, local_maximum_filter
-from gpufish.functions.core.gaussian import fit_gaussian  # your function
-from gpufish.functions.core.radial_sym import compute_radial_sym  # your function
 
 def regionprop_test_for_thresholds(
         image,
