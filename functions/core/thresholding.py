@@ -1,11 +1,12 @@
 import numpy as np
 import cupy as cp
 from tqdm import tqdm
-from cucim.skimage.measure import label, regionprops
-from gpufish.functions.core.filter import log_filter, local_maximum_filter
 from scipy import stats
+from skimage.measure import label, regionprops
 import warnings
-from scipy.optimize import curve_fit
+from gpufish.functions.core.filter import log_filter, local_maximum_filter
+from gpufish.functions.core.gaussian import fit_gaussian  # your function
+from gpufish.functions.core.radial_sym import compute_radial_sym  # your function
 
 def regionprop_test_for_thresholds(
         image,
@@ -20,17 +21,15 @@ def regionprop_test_for_thresholds(
         threshold_range=None
 ):
     """
-    Cumulative threshold binning with support for multiple regionprops,
-    now includes:
-        - radial_symmetry
-        - gaussian_fit
-        - spot_count
+    Threshold binning for multiple regionprops with optional t-tests.
+    Supports: 'mean_intensity', 'radial_symmetry', 'gaussian_fit', 'spot_count',
+    'weighted_centroid_distance', etc.
     """
 
     if isinstance(regionprop_names, str):
         regionprop_names = [regionprop_names]
 
-    # Backend detection
+    # Backend detection (numpy / cupy)
     try:
         xp = cp.get_array_module(image)
     except Exception:
@@ -44,10 +43,10 @@ def regionprop_test_for_thresholds(
     warnings.filterwarnings("ignore")
     regions = regionprops(cc, intensity_image=image)
 
-    # Volume filtering
     if voxel_size is None or spot_radius is None:
         raise ValueError("voxel_size and spot_radius must be provided")
 
+    # Compute minimum spot volume in pixels
     spot_radius_pixel = xp.array(spot_radius) / xp.array(voxel_size)
     theoretical_volume = 4/3 * np.pi * float(spot_radius_pixel[0]) * float(spot_radius_pixel[1]) * float(spot_radius_pixel[2])
     min_volume_pixels = min_volume_thresh * theoretical_volume
@@ -59,12 +58,8 @@ def regionprop_test_for_thresholds(
     if thresholds is None:
         if num_bins is None:
             raise ValueError("Provide num_bins or thresholds")
-        if threshold_range is None:
-            min_val, max_val = float(xp.min(image)), float(xp.max(image))
-        else:
-            min_val, max_val = threshold_range
+        min_val, max_val = threshold_range if threshold_range is not None else float(xp.min(image)), float(xp.max(image))
         thresholds = xp.linspace(min_val, max_val, num_bins, endpoint=False)
-
     thresholds = xp.asarray(thresholds)
 
     all_bin_results = {}
@@ -74,9 +69,10 @@ def regionprop_test_for_thresholds(
         centers = []
         values = []
 
-        for r in tqdm(regions, desc=f"Processing regions for '{regionprop_name}'"):
+        rp = regionprop_name.lower()
 
-            # Area filter
+        for r in tqdm(regions, desc=f"Processing regions for '{regionprop_name}'"):
+            # Volume filter
             if r.area < min_volume_pixels:
                 continue
 
@@ -90,7 +86,6 @@ def regionprop_test_for_thresholds(
                 continue
 
             center_intensity = float(image[coords])
-            rp = regionprop_name.lower()
 
             try:
                 # --- Existing regionprops ---
@@ -107,13 +102,12 @@ def regionprop_test_for_thresholds(
                 elif rp == "weighted_centroid_distance":
                     if not hasattr(r, "weighted_centroid"):
                         continue
-                    wc = cp.asarray(r.weighted_centroid)
-                    c  = cp.asarray(r.centroid)
-
-                    if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(c))):
+                    wc = cp.asarray(r.weighted_centroid) if hasattr(r.weighted_centroid, "shape") else np.array(r.weighted_centroid)
+                    c_cpu = np.asarray(c)
+                    if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(c_cpu))):
                         continue
-                    value = float(cp.linalg.norm(wc - c).get())
-                    
+                    value = float(cp.linalg.norm(wc - c_cpu).get() if hasattr(wc, "get") else np.linalg.norm(wc - c_cpu))
+
                 elif rp in ["convex_area", "solidity"]:
                     if r.area < 4:
                         continue
@@ -121,13 +115,13 @@ def regionprop_test_for_thresholds(
 
                 # --- New regionprops ---
                 elif rp == "radial_symmetry":
-                    value = compute_radial_sym(r.intensity_image)  # implement this function
+                    value = compute_radial_sym(r.intensity_image)
 
                 elif rp == "gaussian_fit":
-                    value = fit_gaussian(r.intensity_image)["sigma_avg"] # implement this function
+                    value = fit_gaussian(r.intensity_image)["sigma_avg"]
 
                 elif rp == "spot_count":
-                    value = 1  # each valid region counts as one spot
+                    value = 1  # each region counts as one spot
 
                 else:
                     if not hasattr(r, regionprop_name):
@@ -147,52 +141,41 @@ def regionprop_test_for_thresholds(
             print(f"Warning: No valid regions for '{regionprop_name}'. Skipping.")
             continue
 
+        # Convert to arrays
         centers = xp.asarray(centers)
         values = xp.asarray(values)
 
-        # --- Corrected Cumulative binning ---
+        # --- Cumulative binning ---
         bin_results = {}
-
         for t in thresholds:
             key = f"{int(float(t))}"
 
-            # Determine mask based on metric type
             if rp == "mean_intensity":
                 mask = centers >= t
             else:
                 mask = values >= t
 
-            # Spot count metric: store number of spots above threshold
             if rp == "spot_count":
                 bin_results[key] = int(np.sum(mask))
             else:
-                # For other metrics, store the actual values
-                if np.any(mask):
-                    bin_results[key] = values[mask]
-                else:
-                    bin_results[key] = xp.array([])  # empty array if no spots pass
+                bin_results[key] = values[mask] if np.any(mask) else xp.array([])
 
-
-        # --- Safe Welch t-test / spot_count handling ---
+        # --- Welch t-tests ---
         t_tests = {}
         keys = list(bin_results.keys())
-
         for i in range(len(keys) - 1):
             if rp == "spot_count":
-                # for spot_count, just assign 1
                 t_stat, p_value = 1.0, 1.0
             else:
                 a = bin_results[keys[i]]
                 b = bin_results[keys[i + 1]]
 
-                # convert to numpy if CuPy
                 if xp is not np:
                     if isinstance(a, cp.ndarray):
                         a = cp.asnumpy(a)
                     if isinstance(b, cp.ndarray):
                         b = cp.asnumpy(b)
 
-                # ensure arrays
                 a = np.atleast_1d(a)
                 b = np.atleast_1d(b)
 
@@ -201,10 +184,13 @@ def regionprop_test_for_thresholds(
                 else:
                     t_stat, p_value = np.nan, np.nan
 
-    t_tests[f"{keys[i]} vs {keys[i+1]}"] = (t_stat, p_value)
+            t_tests[f"{keys[i]} vs {keys[i+1]}"] = (t_stat, p_value)
+
+        # --- Save results ---
+        all_bin_results[regionprop_name] = bin_results
+        all_t_tests[regionprop_name] = t_tests
 
     return all_bin_results, all_t_tests
-
 
 def compute_radial_sym(intensity_image):
     """
