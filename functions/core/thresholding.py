@@ -97,7 +97,7 @@ def regionprop_test_for_thresholds(
                     if r.area > 1:
                         value = center_intensity - ((r.mean_intensity * r.area - center_intensity) / (r.area - 1))
                     else: 
-                        value = 0 
+                        value = 0
 
                 elif rp == "weighted_centroid_distance":
                     if not hasattr(r, "weighted_centroid"):
@@ -106,7 +106,7 @@ def regionprop_test_for_thresholds(
                     c  = cp.asarray(r.centroid)
                     if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(cu))):
                         continue
-                    value = float(cp.linalg.norm(wc - c))
+                    value = float(cp.linalg.norm(wc - c).get())
 
                 elif rp in ["convex_area", "solidity"]:
                     if r.area < 4:
