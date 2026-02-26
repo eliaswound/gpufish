@@ -147,7 +147,20 @@ def regionprop_test_for_thresholds(
 
         # Convert to arrays
         centers = xp.asarray(centers)
-        values = xp.asarray(values)
+        clean_values = []
+        for v in values:
+            # CuPy or NumPy scalars or Python floats/ints
+            if isinstance(v, (int, float, np.floating, np.integer, cp.floating, cp.integer)):
+                clean_values.append(float(v))  # convert everything to plain float
+            # Optionally handle 0-dim CuPy / NumPy arrays
+            elif hasattr(v, 'shape') and v.shape == ():
+                clean_values.append(float(v.item()))
+            else:
+                # skip anything else (non-scalar)
+                continue
+
+        # Now safe to convert to array
+        values = xp.asarray(clean_values)
 
         # --- Cumulative binning ---
         bin_results = {}
