@@ -1,10 +1,11 @@
 import numpy as np
 import cupy as cp
 from tqdm import tqdm
-from scipy import stats
-from skimage.measure import label, regionprops
-import warnings
+from cucim.skimage.measure import label, regionprops
 from gpufish.functions.core.filter import log_filter, local_maximum_filter
+from scipy import stats
+import warnings
+from scipy.optimize import curve_fit
 
 def regionprop_test_for_thresholds(
         image,
