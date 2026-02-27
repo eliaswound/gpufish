@@ -6,6 +6,7 @@ from gpufish.functions.core.filter import log_filter, local_maximum_filter
 from scipy import stats
 import warnings
 from scipy.optimize import curve_fit
+from skimage.morphology import dilation, square, cube
 
 def regionprop_test_for_thresholds(
         image,
@@ -110,7 +111,10 @@ def regionprop_test_for_thresholds(
                     if r.area < 4:
                         continue
                     value = getattr(r, regionprop_name)
-
+                elif rp == "contrast":
+                    value = compute_contrast(r, image)
+                elif rp == "zscore":
+                    value = compute_zscore(r, image)
                 # --- New regionprops ---
                 elif rp == "radial_symmetry":
                     value = compute_radial_sym(r.intensity_image)
@@ -321,3 +325,60 @@ def fit_gaussian(intensity_image):
 
     return {'amplitude': A, 'sigma_x': sigma_x, 'sigma_y': sigma_y,
             'background': B, 'sigma_avg': sigma_avg}
+
+ 
+
+def compute_contrast(region, image, ring_size=1):
+    """
+    Compute contrast = I_center - I_background_mean
+    Works for single-pixel regions. CUDA-compatible.
+    """
+    region_mask = region.image
+    # dilate to get background ring (CPU)
+    if image.ndim == 2:
+        dilated_mask = dilation(region_mask, square(2*ring_size+1))
+    else:
+        dilated_mask = dilation(region_mask, cube(2*ring_size+1))
+    
+    bg_mask = dilated_mask.astype(bool) & (~region_mask)
+
+    # map to image coordinates
+    if image.ndim == 2:
+        minr, minc, maxr, maxc = region.bbox
+        bg_pixels = cp.asarray(image[minr:maxr, minc:maxc][bg_mask])
+    else:
+        minz, minr, minc, maxz, maxr, maxc = region.bbox
+        bg_pixels = cp.asarray(image[minz:maxz, minr:maxr, minc:maxc][bg_mask])
+
+    if bg_pixels.size == 0:
+        return cp.nan
+
+    I_center = float(region.max_intensity)
+    I_bg_mean = float(cp.mean(bg_pixels))
+    return float(I_center - I_bg_mean)
+
+def compute_zscore(region, image, ring_size=1):
+    """
+    Compute z-score = (I_center - I_background_mean)/I_background_std
+    CUDA-compatible.
+    """
+    region_mask = region.image
+    if image.ndim == 2:
+        dilated_mask = dilation(region_mask, square(2*ring_size+1))
+    else:
+        dilated_mask = dilation(region_mask, cube(2*ring_size+1))
+    
+    bg_mask = dilated_mask.astype(bool) & (~region_mask)
+
+    if image.ndim == 2:
+        minr, minc, maxr, maxc = region.bbox
+        bg_pixels = cp.asarray(image[minr:maxr, minc:maxc][bg_mask])
+    else:
+        minz, minr, minc, maxz, maxr, maxc = region.bbox
+        bg_pixels = cp.asarray(image[minz:maxz, minr:maxr, minc:maxc][bg_mask])
+
+    if bg_pixels.size == 0 or cp.std(bg_pixels) == 0:
+        return cp.nan
+
+    I_center = float(region.max_intensity)
+    return float((I_center - cp.mean(bg_pixels)) / cp.std(bg_pixels))

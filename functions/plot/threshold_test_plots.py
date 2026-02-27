@@ -19,7 +19,7 @@ def plot_all_threshold_test_results(
     Fast plotting function.
     Uses precomputed t-tests if available.
     Pools bins only for visualization if bin count > max_bins.
-    Skips significance stars for 'spot_count'.
+    Automatically switches to cumulative curve for 'spot_count'.
     """
 
     sns.set(style="whitegrid")
@@ -51,18 +51,64 @@ def plot_all_threshold_test_results(
 
             for i in range(0, original_bin_count, pool_size):
                 chunk = data[i:i + pool_size]
-                merged = np.concatenate(chunk) if len(chunk) > 0 else np.array([])
+
+                if rp_name == "spot_count":
+                    merged = np.array([sum(int(d[0]) if isinstance(d, np.ndarray) else int(d) for d in chunk)])
+                else:
+                    merged = np.concatenate(chunk) if len(chunk) > 0 else np.array([])
+
                 pooled_data.append(merged)
                 pooled_keys.append(bin_keys[i])
 
             data = pooled_data
             bin_keys = pooled_keys
 
-        # -----------------------------
-        # Remove negative values (clean log behavior)
-        # -----------------------------
-        if rp_name != "spot_count":
-            data = [d[d > 0] if len(d) > 0 else np.array([1e-12]) for d in data]
+        # ============================================================
+        # SPECIAL CASE: SPOT COUNT (CUMULATIVE CURVE)
+        # ============================================================
+        if rp_name == "spot_count":
+
+            counts = [
+                int(d[0]) if isinstance(d, np.ndarray) else int(d)
+                for d in data
+            ]
+
+            fig_width = min(40, max(12, len(bin_keys) * 0.25))
+            plt.figure(figsize=(fig_width, 6), dpi=200)
+
+            x = np.arange(len(counts))
+            plt.plot(x, counts, marker='o', linewidth=2)
+
+            label_step = 2
+            tick_positions = np.arange(0, len(bin_keys), label_step)
+            tick_labels = [bin_keys[i] for i in tick_positions]
+
+            plt.xticks(ticks=tick_positions, labels=tick_labels, fontsize=8)
+            plt.xlabel("Intensity Threshold")
+            plt.ylabel("Cumulative Spot Count")
+
+            title = "Cumulative Spot Count vs Threshold"
+            if pooled:
+                title += f" (pooled to ≤{max_bins} bins)"
+            plt.title(title)
+
+            plt.tight_layout()
+
+            if save_image and save_path:
+                os.makedirs(save_path, exist_ok=True)
+                filename = "spot_count_cumulative_plot.jpg"
+                plt.savefig(os.path.join(save_path, filename), dpi=300)
+
+            plt.show()
+
+            continue  # Skip normal boxplot logic
+
+        # ============================================================
+        # NORMAL REGIONPROPS (boxplot behavior unchanged)
+        # ============================================================
+
+        # Remove negative values for clean log behavior
+        data = [d[d > 0] if len(d) > 0 else np.array([1e-12]) for d in data]
 
         valid_arrays = [d for d in data if len(d) > 0]
         if len(valid_arrays) == 0:
@@ -73,17 +119,14 @@ def plot_all_threshold_test_results(
 
         use_log = (max_val / (min_val + 1e-12)) > log_threshold
 
-        # Fold tiny values upward
         epsilon = max_val * 1e-3
         data = [np.maximum(d, epsilon) for d in data]
 
         means = [np.nanmean(d) for d in data]
 
-        # -----------------------------
-        # Plot
-        # -----------------------------
         fig_width = min(40, max(12, len(bin_keys) * 0.25))
         plt.figure(figsize=(fig_width, 6), dpi=200)
+
         sns.boxplot(data=data)
         plt.plot(
             np.arange(len(means)),
@@ -99,9 +142,9 @@ def plot_all_threshold_test_results(
             plt.yscale('log')
 
         # -----------------------------
-        # Add significance stars ONLY if not pooled AND not 'spot_count'
+        # Significance stars
         # -----------------------------
-        if not pooled and rp_name != "spot_count":
+        if not pooled:
             t_tests = all_t_tests.get(rp_name, {})
 
             y_max = np.nanmax([np.nanmax(d) for d in data])
@@ -133,9 +176,9 @@ def plot_all_threshold_test_results(
                     y = y_pair_max + 2 * step
 
                     plt.plot([x1, x1, x2, x2], [y, y + step, y + step, y], color='black')
-                    plt.text((x1 + x2)/2, y + step, stars, ha='center', va='bottom', fontsize=8)
+                    plt.text((x1 + x2)/2, y + step, stars,
+                             ha='center', va='bottom', fontsize=8)
 
-            # Expand y-limits so stars are not stuck at top border
             ax = plt.gca()
             ymin, ymax = ax.get_ylim()
             if use_log:
@@ -150,9 +193,12 @@ def plot_all_threshold_test_results(
         tick_positions = np.arange(0, len(bin_keys), label_step)
         tick_labels = [bin_keys[i] for i in tick_positions]
 
-        plt.xticks(ticks=tick_positions, labels=tick_labels, rotation=0, ha='right', fontsize=8)
+        plt.xticks(ticks=tick_positions, labels=tick_labels,
+                   rotation=0, ha='right', fontsize=8)
+
         plt.xlabel("Intensity Bins")
         plt.ylabel(rp_name)
+
         title = f"Binned Analysis: {rp_name}"
         if pooled:
             title += f" (pooled to ≤{max_bins} bins)"
@@ -161,9 +207,6 @@ def plot_all_threshold_test_results(
         plt.legend()
         plt.tight_layout()
 
-        # -----------------------------
-        # Save if requested
-        # -----------------------------
         if save_image and save_path:
             os.makedirs(save_path, exist_ok=True)
             filename = f"{rp_name}_plot_with_different_threshold.jpg"
