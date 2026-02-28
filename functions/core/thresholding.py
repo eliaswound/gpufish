@@ -42,7 +42,7 @@ def regionprop_test_for_thresholds(
 
     warnings.filterwarnings("ignore")
     regions = regionprops(cc, intensity_image=image)
-
+    log_regions = regionprops(cc, intensity_image=log_image)
     if voxel_size is None or spot_radius is None:
         raise ValueError("voxel_size and spot_radius must be provided")
 
@@ -72,7 +72,7 @@ def regionprop_test_for_thresholds(
         rp = regionprop_name.lower()
 
         for r in tqdm(regions, desc=f"Processing regions for '{regionprop_name}'"):
-            # Volume filter
+            i = 0
             if r.area < min_volume_pixels:
                 continue
 
@@ -95,7 +95,7 @@ def regionprop_test_for_thresholds(
                     value = center_intensity / float(r.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    value = center_intensity - r.mean_intensity
+                    value = center_intensity - log_regions[i].mean_intensity
                 
 
                 elif rp == "weighted_centroid_distance":
@@ -146,7 +146,7 @@ def regionprop_test_for_thresholds(
         if len(centers) == 0:
             print(f"Warning: No valid regions for '{regionprop_name}'. Skipping.")
             continue
-
+        i + = 1
         # Convert to arrays
         centers = xp.asarray(centers)
         clean_values = []
