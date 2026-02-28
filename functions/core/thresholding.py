@@ -86,7 +86,7 @@ def regionprop_test_for_thresholds(
                 continue
 
             center_intensity = float(image[coords])
-
+            log_center_intensity = float(log_image[coords])
             try:
                 # --- Existing regionprops ---
                 if rp == "sbr":
@@ -95,7 +95,8 @@ def regionprop_test_for_thresholds(
                     value = center_intensity / float(r.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    value = center_intensity - log_regions[i].mean_intensity
+                    
+                    value = log_center_intensity - float(log_regions[i].mean_intensity)
                 
 
                 elif rp == "weighted_centroid_distance":
