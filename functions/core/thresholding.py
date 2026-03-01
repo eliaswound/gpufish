@@ -165,7 +165,7 @@ def regionprop_test_for_thresholds(
                # --- Cumulative binning ---
         # For all regionprops: threshold by center intensity (spots with center >= t)
         bin_results = {}
-        for t in thresholds:
+        for t in tqdm(thresholds, desc=f"Binning {regionprop_name}"):
             key = f"{int(float(t))}"
             mask = centers >= t
 
