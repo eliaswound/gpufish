@@ -94,10 +94,8 @@ def regionprop_test_for_thresholds(
                     value = center_intensity / float(r.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    
-                    value = center_intensity - float(regions[i].mean_intensity)
+                    value = center_intensity - float(r.mean_intensity)
                 
-
                 elif rp == "weighted_centroid_distance":
                     if not hasattr(r, "weighted_centroid"):
                         continue
@@ -164,24 +162,17 @@ def regionprop_test_for_thresholds(
         values = xp.asarray(clean_values)
 
         # --- Cumulative binning ---
-        # --- Cumulative binning ---
+               # --- Cumulative binning ---
+        # For all regionprops: threshold by center intensity (spots with center >= t)
         bin_results = {}
-        for t in tqdm(thresholds, desc=f"Binning {regionprop_name}"):
+        for t in thresholds:
             key = f"{int(float(t))}"
-
-            if rp == "mean_intensity":
-                mask = centers >= t
-            elif rp in ["exceeding", "center-mean"]:
-                # Threshold by center intensity; store the metric values for those spots
-                mask = centers >= t
-            else:
-                mask = values >= t
+            mask = centers >= t
 
             if rp == "spot_count":
                 bin_results[key] = int(np.sum(mask))
             else:
                 bin_results[key] = values[mask] if np.any(mask) else xp.array([])
-
         # --- Welch t-tests ---
         t_tests = {}
         keys = list(bin_results.keys())
