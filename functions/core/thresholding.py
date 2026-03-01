@@ -42,7 +42,6 @@ def regionprop_test_for_thresholds(
 
     warnings.filterwarnings("ignore")
     regions = regionprops(cc, intensity_image=image)
-    log_regions = regionprops(cc, intensity_image=log_image)
     if voxel_size is None or spot_radius is None:
         raise ValueError("voxel_size and spot_radius must be provided")
 
@@ -72,7 +71,7 @@ def regionprop_test_for_thresholds(
         rp = regionprop_name.lower()
 
         for r in tqdm(regions, desc=f"Processing regions for '{regionprop_name}'"):
-            i = 0
+
             if r.area < min_volume_pixels:
                 continue
 
@@ -86,7 +85,7 @@ def regionprop_test_for_thresholds(
                 continue
 
             center_intensity = float(image[coords])
-            log_center_intensity = float(log_image[coords])
+            
             try:
                 # --- Existing regionprops ---
                 if rp == "sbr":
@@ -96,7 +95,7 @@ def regionprop_test_for_thresholds(
 
                 elif rp in ["exceeding", "center-mean"]:
                     
-                    value = log_center_intensity - float(log_regions[i].mean_intensity)
+                    value = center_intensity - float(regions[i].mean_intensity)
                 
 
                 elif rp == "weighted_centroid_distance":
@@ -147,7 +146,6 @@ def regionprop_test_for_thresholds(
         if len(centers) == 0:
             print(f"Warning: No valid regions for '{regionprop_name}'. Skipping.")
             continue
-        i + = 1
         # Convert to arrays
         centers = xp.asarray(centers)
         clean_values = []
@@ -166,11 +164,15 @@ def regionprop_test_for_thresholds(
         values = xp.asarray(clean_values)
 
         # --- Cumulative binning ---
+        # --- Cumulative binning ---
         bin_results = {}
         for t in thresholds:
             key = f"{int(float(t))}"
 
             if rp == "mean_intensity":
+                mask = centers >= t
+            elif rp in ["exceeding", "center-mean"]:
+                # Threshold by center intensity; store the metric values for those spots
                 mask = centers >= t
             else:
                 mask = values >= t
