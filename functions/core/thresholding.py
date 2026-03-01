@@ -42,6 +42,7 @@ def regionprop_test_for_thresholds(
 
     warnings.filterwarnings("ignore")
     regions = regionprops(cc, intensity_image=image)
+
     if voxel_size is None or spot_radius is None:
         raise ValueError("voxel_size and spot_radius must be provided")
 
@@ -71,7 +72,7 @@ def regionprop_test_for_thresholds(
         rp = regionprop_name.lower()
 
         for r in tqdm(regions, desc=f"Processing regions for '{regionprop_name}'"):
-
+            # Volume filter
             if r.area < min_volume_pixels:
                 continue
 
@@ -85,7 +86,7 @@ def regionprop_test_for_thresholds(
                 continue
 
             center_intensity = float(image[coords])
-            
+
             try:
                 # --- Existing regionprops ---
                 if rp == "sbr":
@@ -94,8 +95,9 @@ def regionprop_test_for_thresholds(
                     value = center_intensity / float(r.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    value = center_intensity - float(r.mean_intensity)
+                    value = center_intensity - r.mean_intensity
                 
+
                 elif rp == "weighted_centroid_distance":
                     if not hasattr(r, "weighted_centroid"):
                         continue
@@ -144,6 +146,7 @@ def regionprop_test_for_thresholds(
         if len(centers) == 0:
             print(f"Warning: No valid regions for '{regionprop_name}'. Skipping.")
             continue
+
         # Convert to arrays
         centers = xp.asarray(centers)
         clean_values = []
@@ -162,21 +165,19 @@ def regionprop_test_for_thresholds(
         values = xp.asarray(clean_values)
 
         # --- Cumulative binning ---
-        # Bin by center intensity for all regionprops: spots with center >= t
-
         bin_results = {}
-        for t in tqdm(thresholds, desc=f"Binning {regionprop_name}"):
+        for t in thresholds:
             key = f"{int(float(t))}"
-            mask = centers >= t   # always threshold by center intensity
-
+            mask = centers >= t
             if rp == "spot_count":
                 bin_results[key] = int(np.sum(mask))
             else:
                 bin_results[key] = values[mask] if np.any(mask) else xp.array([])
+
         # --- Welch t-tests ---
         t_tests = {}
         keys = list(bin_results.keys())
-        for i in tqdm(range(len(keys) - 1), desc=f"T-tests {regionprop_name}"):
+        for i in range(len(keys) - 1):
             if rp == "spot_count":
                 t_stat, p_value = 1.0, 1.0
             else:
