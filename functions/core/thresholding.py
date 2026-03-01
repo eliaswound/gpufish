@@ -166,7 +166,7 @@ def regionprop_test_for_thresholds(
         # --- Cumulative binning ---
         # --- Cumulative binning ---
         bin_results = {}
-        for t in thresholds:
+        for t in tqdm(thresholds, desc=f"Binning {regionprop_name}"):
             key = f"{int(float(t))}"
 
             if rp == "mean_intensity":
@@ -185,7 +185,7 @@ def regionprop_test_for_thresholds(
         # --- Welch t-tests ---
         t_tests = {}
         keys = list(bin_results.keys())
-        for i in range(len(keys) - 1):
+        for i in tqdm(range(len(keys) - 1), desc=f"T-tests {regionprop_name}"):
             if rp == "spot_count":
                 t_stat, p_value = 1.0, 1.0
             else:
