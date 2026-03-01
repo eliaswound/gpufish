@@ -107,15 +107,25 @@ def plot_all_threshold_test_results(
         # NORMAL REGIONPROPS (boxplot behavior unchanged)
         # ============================================================
 
-        # Remove negative values for clean log behavior
-        data = [d[d > 0] if len(d) > 0 else np.array([1e-12]) for d in data]
+        # Remove negative values for clean log behavior and ensure bins are non-empty
+        cleaned_data = []
+        for d in data:
+            if len(d) == 0:
+                cleaned_data.append(np.array([1e-12]))
+                continue
 
-        valid_arrays = [d for d in data if len(d) > 0]
-        if len(valid_arrays) == 0:
-            continue
+            d_pos = d[d > 0]
+            if len(d_pos) == 0:
+                # All values were <= 0, keep a tiny positive placeholder
+                cleaned_data.append(np.array([1e-12]))
+            else:
+                cleaned_data.append(d_pos)
 
-        max_val = np.nanmax([np.nanmax(d) for d in valid_arrays])
-        min_val = np.nanmin([np.nanmin(d) for d in valid_arrays])
+        data = cleaned_data
+
+        # At this point every array in data has at least one element
+        max_val = np.nanmax([np.nanmax(d) for d in data])
+        min_val = np.nanmin([np.nanmin(d) for d in data])
 
         use_log = (max_val / (min_val + 1e-12)) > log_threshold
 
