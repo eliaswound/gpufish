@@ -162,12 +162,12 @@ def regionprop_test_for_thresholds(
         values = xp.asarray(clean_values)
 
         # --- Cumulative binning ---
-               # --- Cumulative binning ---
-        # For all regionprops: threshold by center intensity (spots with center >= t)
+        # Bin by center intensity for all regionprops: spots with center >= t
+
         bin_results = {}
         for t in tqdm(thresholds, desc=f"Binning {regionprop_name}"):
             key = f"{int(float(t))}"
-            mask = centers >= t
+            mask = centers >= t   # always threshold by center intensity
 
             if rp == "spot_count":
                 bin_results[key] = int(np.sum(mask))
