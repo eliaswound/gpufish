@@ -42,7 +42,7 @@ def regionprop_test_for_thresholds(
 
     warnings.filterwarnings("ignore")
     regions = regionprops(cc, intensity_image=log_image)
-
+    regular_regions = regionprops(cc, intensity_image=image)
     if voxel_size is None or spot_radius is None:
         raise ValueError("voxel_size and spot_radius must be provided")
 
@@ -71,7 +71,7 @@ def regionprop_test_for_thresholds(
 
         rp = regionprop_name.lower()
 
-        for r in tqdm(regions, desc=f"Processing regions for '{regionprop_name}'"):
+        for r, rr in zip(tqdm(regions, regular_regions), desc=f"Processing regions for '{regionprop_name}'"):
             # Volume filter
             if r.area < min_volume_pixels:
                 continue
@@ -108,25 +108,25 @@ def regionprop_test_for_thresholds(
                     value = float(cp.linalg.norm(wc - c).get())
 
                 elif rp in ["convex_area", "solidity"]:
-                    if r.area < 4:
+                    if rr.area < 4:
                         continue
-                    value = getattr(r, regionprop_name)
+                    value = getattr(rr, regionprop_name)
                 elif rp == "contrast":
                     value = compute_contrast(r, image)
                 elif rp == "zscore":
                     value = compute_zscore(r, image)
                 # --- New regionprops ---
                 elif rp == "radial_symmetry":
-                    value = compute_radial_sym(r.intensity_image)
+                    value = compute_radial_sym(rr.intensity_image)
 
                 elif rp == "gaussian_fit":
-                    value = fit_gaussian(r.intensity_image)["sigma_avg"]
+                    value = fit_gaussian(rr.intensity_image)["sigma_avg"]
 
                 elif rp == "spot_count":
                     value = 1  # each region counts as one spot
                 elif rp == "roundness":
-                    if r.perimeter > 0:
-                        value = 4 * np.pi * r.area / (r.perimeter ** 2)
+                    if rr.perimeter > 0:
+                        value = 4 * np.pi * rr.area / (rr.perimeter ** 2)
                     else:
                         value = np.nan
                 else:
