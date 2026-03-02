@@ -329,49 +329,86 @@ def compute_contrast(region, image, ring_size=1):
     Compute contrast = I_center - I_background_mean
     Works for single-pixel regions. CUDA-compatible.
     """
+    # region mask on CPU
     region_mask = region.image
+    if isinstance(region_mask, cp.ndarray):
+        region_mask = cp.asnumpy(region_mask)
+    else:
+        region_mask = np.asarray(region_mask)
+
     # dilate to get background ring (CPU)
     if image.ndim == 2:
-        dilated_mask = dilation(region_mask, square(2*ring_size+1))
+        dilated_mask = dilation(region_mask, square(2 * ring_size + 1))
     else:
-        dilated_mask = dilation(region_mask, cube(2*ring_size+1))
-    
-    bg_mask = dilated_mask.astype(bool) & (~region_mask)
+        dilated_mask = dilation(region_mask, cube(2 * ring_size + 1))
+
+    bg_mask = dilated_mask.astype(bool) & (~region_mask.astype(bool))
 
     # map to image coordinates
     if image.ndim == 2:
         minr, minc, maxr, maxc = region.bbox
-        bg_pixels = cp.asarray(image[minr:maxr, minc:maxc][bg_mask])
+        patch = image[minr:maxr, minc:maxc]
     else:
         minz, minr, minc, maxz, maxr, maxc = region.bbox
-        bg_pixels = cp.asarray(image[minz:maxz, minr:maxr, minc:maxc][bg_mask])
+        patch = image[minz:maxz, minr:maxr, minc:maxc]
 
-    if bg_pixels.size == 0:
+    if isinstance(patch, cp.ndarray):
+        patch_cpu = cp.asnumpy(patch)
+    else:
+        patch_cpu = np.asarray(patch)
+
+    bg_pixels_cpu = patch_cpu[bg_mask]
+    if bg_pixels_cpu.size == 0:
         return cp.nan
+
+    bg_pixels = cp.asarray(bg_pixels_cpu)
 
     I_center = float(region.max_intensity)
     I_bg_mean = float(cp.mean(bg_pixels))
     return float(I_center - I_bg_mean)
 
+
 def compute_zscore(region, image, ring_size=1):
     """
     Compute z-score = (I_center - I_background_mean)/I_background_std
-    CUDA-compatible.
+    CUDA-compatible: image can be NumPy or CuPy, stats done on GPU.
     """
-    region_mask = region.image
-    if image.ndim == 2:
-        dilated_mask = dilation(region_mask, square(2*ring_size+1))
-    else:
-        dilated_mask = dilation(region_mask, cube(2*ring_size+1))
-    
-    bg_mask = dilated_mask.astype(bool) & (~region_mask)
 
+    # --- Make region mask a NumPy array for skimage/scipy ---
+    region_mask = region.image
+    if isinstance(region_mask, cp.ndarray):
+        region_mask = cp.asnumpy(region_mask)
+    else:
+        region_mask = np.asarray(region_mask)
+
+    # Dilate to get background ring (CPU)
+    if image.ndim == 2:
+        dilated_mask = dilation(region_mask, square(2 * ring_size + 1))
+    else:
+        dilated_mask = dilation(region_mask, cube(2 * ring_size + 1))
+
+    bg_mask = dilated_mask.astype(bool) & (~region_mask.astype(bool))
+
+    # --- Map to image coordinates and extract background pixels on CPU ---
     if image.ndim == 2:
         minr, minc, maxr, maxc = region.bbox
-        bg_pixels = cp.asarray(image[minr:maxr, minc:maxc][bg_mask])
+        patch = image[minr:maxr, minc:maxc]
     else:
         minz, minr, minc, maxz, maxr, maxc = region.bbox
-        bg_pixels = cp.asarray(image[minz:maxz, minr:maxr, minc:maxc][bg_mask])
+        patch = image[minz:maxz, minr:maxr, minc:maxc]
+
+    # Ensure patch is NumPy before applying NumPy boolean mask
+    if isinstance(patch, cp.ndarray):
+        patch_cpu = cp.asnumpy(patch)
+    else:
+        patch_cpu = np.asarray(patch)
+
+    bg_pixels_cpu = patch_cpu[bg_mask]
+    if bg_pixels_cpu.size == 0:
+        return cp.nan
+
+    # Move background pixels to GPU for stats
+    bg_pixels = cp.asarray(bg_pixels_cpu)
 
     if bg_pixels.size == 0 or cp.std(bg_pixels) == 0:
         return cp.nan
