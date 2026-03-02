@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import math
+from gpufish.functions.statistics.thresholding_statistics import spot_count_slopes
+
 
 
 def plot_all_threshold_test_results(
@@ -223,3 +225,53 @@ def plot_all_threshold_test_results(
             plt.savefig(os.path.join(save_path, filename), dpi=300)
 
         plt.show()
+
+
+
+from gpufish.functions.statistics.thresholding_statistics import spot_count_slopes
+
+def plot_spot_count_slopes_seaborn(all_bin_results, frac=None):
+    thresholds, counts, slopes = spot_count_slopes(all_bin_results)
+
+    # x positions for slopes = midpoints between thresholds
+    slope_x = 0.5 * (thresholds[:-1] + thresholds[1:])
+
+    # Optional plateau detection
+    plateau_interval = None
+    if frac is not None and slopes.size > 0 and not np.all(np.isnan(slopes)):
+        abs_slopes = np.abs(slopes)
+        max_abs = np.nanmax(abs_slopes)
+        if max_abs > 0 and not np.isnan(max_abs):
+            thr = max_abs * frac
+            for i, s in enumerate(slopes):
+                if np.isnan(s):
+                    continue
+                if np.abs(s) <= thr:
+                    plateau_interval = (thresholds[i], thresholds[i + 1])
+                    break
+
+    fig, axes = plt.subplots(2, 1, figsize=(10, 8), dpi=150)
+    sns.set(style="whitegrid")
+
+    # Top: counts vs threshold
+    ax = axes[0]
+    sns.lineplot(x=thresholds, y=counts, marker="o", ax=ax)
+    ax.set_ylabel("Spot count")
+    ax.set_title("Spot count vs threshold")
+    if plateau_interval is not None:
+        t0, t1 = plateau_interval
+        ax.axvspan(t0, t1, color="green", alpha=0.2, label=f"plateau [{t0:.1f}, {t1:.1f}]")
+        ax.legend()
+
+    # Bottom: slopes vs threshold midpoint
+    ax = axes[1]
+    sns.lineplot(x=slope_x, y=slopes, marker="o", ax=ax)
+    ax.set_xlabel("Threshold")
+    ax.set_ylabel("Δcount / Δthreshold")
+    ax.set_title("Spot count slopes")
+    if plateau_interval is not None:
+        t0, t1 = plateau_interval
+        ax.axvspan(t0, t1, color="green", alpha=0.2)
+
+    plt.tight_layout()
+    plt.show()
