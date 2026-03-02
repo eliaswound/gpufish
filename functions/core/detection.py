@@ -28,5 +28,5 @@ def detect_spots(
     mask = (mask_local_max & (image > threshold))
     cc = label(mask)
     local_max_regions = regionprops(cc)
-    spot = np.array(local_max_regions.centroid)
+    spot = np.array([r.centroid for r in local_max_regions])
     return spot
