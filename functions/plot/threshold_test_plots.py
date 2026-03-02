@@ -230,7 +230,7 @@ def plot_all_threshold_test_results(
 
 from gpufish.functions.statistics.thresholding_statistics import spot_count_slopes
 
-def plot_spot_count_slopes_seaborn(all_bin_results, frac=None):
+def plot_spot_count_slopes(all_bin_results, frac=None):
     thresholds, counts, slopes = spot_count_slopes(all_bin_results)
 
     # x positions for slopes = midpoints between thresholds
