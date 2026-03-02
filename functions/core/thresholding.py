@@ -7,6 +7,7 @@ from scipy import stats
 import warnings
 from scipy.optimize import curve_fit
 from skimage.morphology import dilation, square, cube
+from skimage.measure import label as sk_label, regionprops as sk_regionprops
 
 def regionprop_test_for_thresholds(
         image,
@@ -130,7 +131,7 @@ def regionprop_test_for_thresholds(
                     value = 1  # each region counts as one spot
                 elif rp == "roundness":
                     if rr.perimeter > 0:
-                        value = 4 * np.pi * rr.area / (rr.perimeter ** 2)
+                       value = roundness_from_3d_region(rr)
                     else:
                         value = np.nan
                 else:
@@ -419,3 +420,39 @@ def compute_zscore(region, image, ring_size=1):
 
     I_center = float(region.max_intensity)
     return float((I_center - cp.mean(bg_pixels)) / cp.std(bg_pixels))
+
+
+
+def roundness_from_3d_region(rr):
+    """
+    Compute 2D roundness for a 3D region by selecting the z-slice
+    where the region has the largest area and computing
+    4*pi*area / perimeter^2 on that slice.
+
+    rr: cucim / skimage regionprops object for a 3D region
+    """
+    # rr.image is a 3D boolean array for the region (shape: z, y, x)
+    mask3d = rr.image
+    if mask3d.ndim != 3 or mask3d.size == 0:
+        return np.nan
+
+    # find the z-slice with the largest area
+    slice_areas = mask3d.reshape(mask3d.shape[0], -1).sum(axis=1)
+    z_idx = int(np.argmax(slice_areas))
+    mask2d = mask3d[z_idx]  # 2D binary mask (y, x)
+
+    if mask2d.sum() == 0:
+        return np.nan
+
+    # label and compute regionprops on this 2D slice (CPU)
+    labeled_2d = sk_label(mask2d.astype(bool))
+    regions_2d = sk_regionprops(labeled_2d)
+
+    if not regions_2d:
+        return np.nan
+
+    r2 = regions_2d[0]
+    if r2.perimeter <= 0:
+        return np.nan
+
+    return 4.0 * np.pi * r2.area / (r2.perimeter ** 2)

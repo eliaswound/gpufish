@@ -6,7 +6,6 @@ from cucim.skimage.measure import regionprops
 def detect_spots(
         image,
         threshold=None,
-        return_threshold=False,
         voxel_size=None,
         spot_radius=None,
         log_kernel_size=None,
@@ -31,8 +30,4 @@ def detect_spots(
     cc = label(mask)
     local_max_regions = regionprops(cc)
     spot = np.array(local_max_region.centroid)
-    # return threshold or not
-    if return_threshold:
-        return spot, threshold
-    else:
-        return spot
+    return spot
