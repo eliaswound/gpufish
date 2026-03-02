@@ -3,6 +3,38 @@ import cupy as cp
 from tqdm import tqdm
 from tifffile import imwrite
 import os
+def generate_coordinates_2D(y, x, shape, iteration =4, get_inner_spot = False):
+    # Initial collection with the starting coordinate (x, y)
+    coordinates_collection = [(y, x)]
+    max_y = (shape[0]-1)
+    max_x = (shape[1]-1)
+
+    for _ in range(iteration):
+        # Copy the current collection to avoid modifying it while iterating
+        current_coordinates = coordinates_collection.copy()
+
+        # Loop through each coordinate in the current collection
+        for coord in current_coordinates:
+            # Extract x and y values from the coordinate
+            cy, cx = coord
+
+            # Add neighboring coordinates to the collection if within bounds
+            if cx + 1 <= max_x:
+                coordinates_collection.append((cy,cx+1))
+            if 0 <= cx - 1:
+                coordinates_collection.append((cy,cx-1))
+            if cy + 1 < max_y:
+                coordinates_collection.append((cy+1, cx))
+            if 0 <= cy - 1:
+                coordinates_collection.append((cy-1, cx))
+
+    # Remove duplicates by converting the list to a set and then back to a list
+    coordinates_collection = list(set(coordinates_collection))
+    if get_inner_spot:
+        return coordinates_collection
+    else:
+        coordinates_collection = [coord for coord in coordinates_collection if abs(coord[0] - y) + abs(coord[1] - x) == iteration]
+        return coordinates_collection
 
 def plot_spots(spots, image, spot_radius=4, save_plot=False, plotname='spotPlot.tif', save_path='./'):
     """
