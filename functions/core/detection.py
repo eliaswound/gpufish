@@ -3,6 +3,7 @@ from gpufish.functions.core.filter import local_maximum_filter
 from tqdm import tqdm
 from cucim.skimage.measure import label
 from cucim.skimage.measure import regionprops
+import numpy as np
 def detect_spots(
         image,
         threshold=None,
