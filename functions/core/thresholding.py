@@ -71,7 +71,11 @@ def regionprop_test_for_thresholds(
 
         rp = regionprop_name.lower()
 
-        for r, rr in zip(tqdm(regions, regular_regions), desc=f"Processing regions for '{regionprop_name}'"):
+        for r, rr in tqdm(
+            zip(regions, regular_regions),
+            total=len(regions),
+            desc=f"Processing regions for '{regionprop_name}'"
+        ):
             # Volume filter
             if r.area < min_volume_pixels:
                 continue
