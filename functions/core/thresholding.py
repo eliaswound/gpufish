@@ -41,7 +41,7 @@ def regionprop_test_for_thresholds(
     cc = label(mask_local_max)
 
     warnings.filterwarnings("ignore")
-    regions = regionprops(cc, intensity_image=image)
+    regions = regionprops(cc, intensity_image=log_image)
 
     if voxel_size is None or spot_radius is None:
         raise ValueError("voxel_size and spot_radius must be provided")
