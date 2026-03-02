@@ -23,9 +23,7 @@ def detect_spots(
     minimum_distance: minimum distance between spots, default is None
     """
     print("detecting spots in image")
-    pixel_values = []
     log_image = log_filter(image, log_kernel_size)
-    pixel_values += list(log_image.ravel())
     mask_local_max = local_maximum_filter(log_image, minimum_distance)
     mask = (mask_local_max & (image > threshold))
     cc = label(mask)
