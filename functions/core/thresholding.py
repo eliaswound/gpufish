@@ -105,7 +105,7 @@ def regionprop_test_for_thresholds(
                 elif rp == "weighted_centroid_distance":
                     if not hasattr(r, "weighted_centroid"):
                         continue
-                    wc = cp.asarray(r.weighted_centroid)
+                    wc = cp.asarray(rr.weighted_centroid)
                     c  = cp.asarray(r.centroid)
                     if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(cu))):
                         continue
@@ -116,9 +116,9 @@ def regionprop_test_for_thresholds(
                         continue
                     value = getattr(rr, regionprop_name)
                 elif rp == "contrast":
-                    value = compute_contrast(r, image)
+                    value = compute_contrast(rr, image)
                 elif rp == "zscore":
-                    value = compute_zscore(r, image)
+                    value = compute_zscore(rr, image)
                 # --- New regionprops ---
                 elif rp == "radial_symmetry":
                     value = compute_radial_sym(rr.intensity_image)
