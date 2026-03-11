@@ -3,10 +3,10 @@ from gpufish.functions.core.filter import local_maximum_filter
 from tqdm import tqdm
 from cucim.skimage.measure import label
 from cucim.skimage.measure import regionprops
+import numpy as np
 def detect_spots(
         image,
         threshold=None,
-        return_threshold=False,
         voxel_size=None,
         spot_radius=None,
         log_kernel_size=None,
@@ -23,16 +23,10 @@ def detect_spots(
     minimum_distance: minimum distance between spots, default is None
     """
     print("detecting spots in image")
-    pixel_values = []
     log_image = log_filter(image, log_kernel_size)
-    pixel_values += list(log_image.ravel())
     mask_local_max = local_maximum_filter(log_image, minimum_distance)
     mask = (mask_local_max & (image > threshold))
     cc = label(mask)
     local_max_regions = regionprops(cc)
-    spot = np.array(local_max_region.centroid)
-    # return threshold or not
-    if return_threshold:
-        return spot, threshold
-    else:
-        return spot
+    spot = np.array([r.centroid for r in local_max_regions])
+    return spot
