@@ -15,7 +15,6 @@ def regionprop_test_for_thresholds(
         num_bins=None,
         thresholds=None,
         log_kernel_size=None,
-        minimum_distance=None,
         voxel_size=None,
         spot_radius=None,
         min_volume_thresh=0.6,
@@ -38,8 +37,7 @@ def regionprop_test_for_thresholds(
 
     # Spot detection
     log_image = log_filter(image, log_kernel_size)
-    mask_local_max = local_maximum_filter(log_image, minimum_distance)
-    cc = label(mask_local_max)
+    cc = label(log_image)
 
     warnings.filterwarnings("ignore")
     regions = regionprops(cc, intensity_image=log_image)
