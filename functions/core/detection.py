@@ -31,7 +31,10 @@ def detect_spots(
     spot = np.array([r.centroid for r in local_max_regions])
     return spot
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 09667f58b6a81e7046ae11b0f6b23d73e95dbbe9
 def detect_spots_exceeding(
         image,
         threshold=None,
@@ -63,6 +66,7 @@ def detect_spots_exceeding(
     
     # 3. Label connected components
     cc = label(mask)
+<<<<<<< HEAD
     local_max_regions = regionprops(cc, intensity_image=log_image)
     
     # 4. Filter spots based on exceeding
@@ -70,11 +74,24 @@ def detect_spots_exceeding(
     for r in tqdm(local_max_regions, desc = "Calculating exceedings"):
         center_coords = tuple(np.round(r.centroid).astype(int))
         center_intensity = float(image[center_coords])
+=======
+    local_max_regions = regionprops(cc, intensity_image=image)
+    
+    # 4. Filter spots based on exceeding
+    filtered_spots = []
+    for r in local_max_regions:
+        center_coords = tuple(map(int, r.centroid))
+        center_intensity = image[center_coords]
+>>>>>>> 09667f58b6a81e7046ae11b0f6b23d73e95dbbe9
         mean_intensity = r.mean_intensity
         value = center_intensity - mean_intensity
         
         if threshold is None or value > threshold:
+<<<<<<< HEAD
             filtered_spots.append(center_coords)
+=======
+            filtered_spots.append(r)
+>>>>>>> 09667f58b6a81e7046ae11b0f6b23d73e95dbbe9
     
     print(f"{len(filtered_spots)} spots passed the exceeding threshold")
     return filtered_spots
