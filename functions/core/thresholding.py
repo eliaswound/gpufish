@@ -95,25 +95,25 @@ def regionprop_test_for_thresholds(
                 if rp == "sbr":
                     if r.mean_intensity <= 0:
                         continue
-                    value = center_intensity / float(r.mean_intensity)
+                    value = center_intensity / float(rr.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    value = center_intensity - r.mean_intensity
+                    value = center_intensity - rr.mean_intensity
                 
 
                 elif rp == "weighted_centroid_distance":
-                    if not hasattr(r, "weighted_centroid"):
+                    if not hasattr(rr, "weighted_centroid"):
                         continue
                     wc = cp.asarray(rr.weighted_centroid)
-                    c  = cp.asarray(r.centroid)
-                    if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(cu))):
+                    c  = cp.asarray(rr.centroid)
+                    if not (np.all(np.isfinite(wc)) and np.all(np.isfinite(c))):
                         continue
                     value = float(cp.linalg.norm(wc - c).get())
 
                 elif rp in ["convex_area", "solidity"]:
                     if rr.area < 4:
                         continue
-                    value = getattr(rr, regionprop_name)
+                    value = getattr(rr, rp)
                 elif rp == "contrast":
                     value = compute_contrast(rr, image)
                 elif rp == "zscore":
