@@ -41,6 +41,21 @@ def _to_numpy(array_like):
     return np.asarray(array_like)
 
 
+def _ensure_min_distance_tuple(min_distance, ndim):
+    """
+    Convert min_distance to tuple format accepted by check_min_distance.
+    """
+    arr = np.asarray(min_distance).astype(float).reshape(-1)
+    if arr.size == 1:
+        arr = np.repeat(arr, ndim)
+    if arr.size != ndim:
+        raise ValueError(
+            f"min_distance has {arr.size} values but image has {ndim} dimensions."
+        )
+    arr = np.maximum(np.ceil(arr).astype(int), 1)
+    return tuple(int(v) for v in arr)
+
+
 def _squared_anisotropic_distance(points, center, radii_pixels):
     """
     Compute squared anisotropic distance in normalized pixel space.
@@ -104,7 +119,7 @@ def detect_spots_threshold(
     min_distance = np.ceil(
         compute_merge_radius_pixels(voxel_size, spot_radius, mode="vector")
     ).astype(int)
-    min_distance = np.maximum(min_distance, 1)
+    min_distance = _ensure_min_distance_tuple(min_distance, image_np.ndim)
 
     peak_mask = local_maximum_filter(log_image, min_distance=min_distance)
     peak_mask_np = _to_numpy(peak_mask) & (log_image_np > 0)
@@ -201,9 +216,11 @@ def collapse_large_regions(image, percentile=99, min_size=1000, min_peak_distanc
 
             # Use local maxima to recover multiple peaks in dense blobs.
             if min_peak_distance is None:
-                min_peak_distance = np.array([2] * image.ndim)
+                peak_distance = tuple([2] * image.ndim)
+            else:
+                peak_distance = _ensure_min_distance_tuple(min_peak_distance, image.ndim)
 
-            local_peaks = local_maximum_filter(region_image, min_distance=min_peak_distance)
+            local_peaks = local_maximum_filter(region_image, min_distance=peak_distance)
             local_peaks = _to_numpy(local_peaks) & region_mask & (region_image > 0)
 
             peak_cc = label(local_peaks)
