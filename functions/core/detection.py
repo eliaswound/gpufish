@@ -1,5 +1,4 @@
 from gpufish.functions.core.filter import log_filter
-from gpufish.functions.core.filter import local_maximum_filter  
 from cucim.skimage.measure import label, regionprops
 import numpy as np
 from tqdm import tqdm
@@ -39,21 +38,6 @@ def _to_numpy(array_like):
     if hasattr(array_like, "get"):
         return array_like.get()
     return np.asarray(array_like)
-
-
-def _ensure_min_distance_tuple(min_distance, ndim):
-    """
-    Convert min_distance to tuple format accepted by check_min_distance.
-    """
-    arr = np.asarray(min_distance).astype(float).reshape(-1)
-    if arr.size == 1:
-        arr = np.repeat(arr, ndim)
-    if arr.size != ndim:
-        raise ValueError(
-            f"min_distance has {arr.size} values but image has {ndim} dimensions."
-        )
-    arr = np.maximum(np.ceil(arr).astype(int), 1)
-    return tuple(int(v) for v in arr)
 
 
 def _squared_anisotropic_distance(points, center, radii_pixels):
@@ -114,22 +98,10 @@ def detect_spots_threshold(
         raise ValueError("voxel_size and spot_radius are required for spot merging.")
 
     log_image = log_filter(image, log_kernel_size)
-    log_image_np = _to_numpy(log_image)
-    image_np = _to_numpy(image)
 
-    if minimum_distance is None:
-        min_distance = np.ceil(
-            compute_merge_radius_pixels(voxel_size, spot_radius, mode="vector")
-        ).astype(int)
-    else:
-        min_distance = minimum_distance
-    min_distance = _ensure_min_distance_tuple(min_distance, image_np.ndim)
-
-    peak_mask = local_maximum_filter(log_image, min_distance=min_distance)
-    peak_mask_np = _to_numpy(peak_mask) & (log_image_np > 0)
-
-    cc = label(peak_mask_np)
-    regions = regionprops(cc, intensity_image=image_np)
+    # Keep the full detection on CuPy arrays to avoid CuPy/NumPy type conflicts.
+    cc = label(log_image > 0)
+    regions = regionprops(cc, intensity_image=image)
 
     # -----------------------------
     # STEP 1: threshold filtering
@@ -139,7 +111,7 @@ def detect_spots_threshold(
 
     for r in tqdm(regions, desc="Filtering spots"):
         center = tuple(np.round(r.centroid).astype(int))
-        intensity = float(image_np[center])
+        intensity = float(image[center])
 
         if threshold is None or intensity > threshold:
             filtered_spots.append(center)
@@ -173,10 +145,9 @@ def detect_spots_threshold(
     # -----------------------------
     
     large_spots = collapse_large_regions(
-        image_np,
+        image,
         percentile=95,
-        min_size=800,
-        min_peak_distance=min_distance
+        min_size=800
     )
     
     print(f"{len(large_spots)} large regions collapsed into spots")
@@ -206,7 +177,8 @@ def collapse_large_regions(image, percentile=99, min_size=1000, min_peak_distanc
     Find large bright connected regions and recover one or more peak spots.
     """
 
-    mask = image > np.percentile(image, percentile)
+    percentile_value = float(np.percentile(_to_numpy(image), percentile))
+    mask = image > percentile_value
 
     cc = label(mask)
     regions = regionprops(cc, intensity_image=image)
@@ -215,27 +187,7 @@ def collapse_large_regions(image, percentile=99, min_size=1000, min_peak_distanc
 
     for r in regions:
         if r.area >= min_size:
-            region_mask = cc == r.label
-            region_image = np.where(region_mask, image, 0)
-
-            # Use local maxima to recover multiple peaks in dense blobs.
-            if min_peak_distance is None:
-                peak_distance = tuple([2] * image.ndim)
-            else:
-                peak_distance = _ensure_min_distance_tuple(min_peak_distance, image.ndim)
-
-            local_peaks = local_maximum_filter(region_image, min_distance=peak_distance)
-            local_peaks = _to_numpy(local_peaks) & region_mask & (region_image > 0)
-
-            peak_cc = label(local_peaks)
-            peak_regions = regionprops(peak_cc, intensity_image=region_image)
-
-            if len(peak_regions) == 0:
-                center = tuple(np.round(r.centroid).astype(int))
-                large_spots.append(center)
-            else:
-                for peak_r in peak_regions:
-                    center = tuple(np.round(peak_r.weighted_centroid).astype(int))
-                    large_spots.append(center)
+            center = tuple(np.round(r.weighted_centroid).astype(int))
+            large_spots.append(center)
 
     return large_spots
