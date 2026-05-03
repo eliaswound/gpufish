@@ -5,8 +5,6 @@ from cucim.skimage.measure import label, regionprops
 from gpufish.functions.core.filter import log_filter, local_maximum_filter
 from scipy import stats
 import warnings
-from scipy.optimize import curve_fit
-from skimage.morphology import dilation, square, cube
 from skimage.measure import label as sk_label, regionprops as sk_regionprops
 from gpufish.functions.core.parameters_calculation import compute_dbscan_eps_pixels, compute_radial_sym, fit_gaussian, compute_contrast, compute_zscore, roundness_from_3d_region
 from gpufish.functions.core.detection import collapse_large_regions, recover_large_clusters 
