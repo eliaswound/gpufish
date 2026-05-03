@@ -104,8 +104,8 @@ def detect_spots_threshold(
         voxel_size=None,
         spot_radius=None,
         log_kernel_size=None,
-        dbscan=True,
-        minimum_distance=None
+        minimum_distance=None,
+        dbscan=True
         ):
 
     print("Detecting spots in image")
