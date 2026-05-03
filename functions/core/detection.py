@@ -104,7 +104,8 @@ def detect_spots_threshold(
         voxel_size=None,
         spot_radius=None,
         log_kernel_size=None,
-        dbscan=True
+        dbscan=True,
+        minimum_distance=None
         ):
 
     print("Detecting spots in image")
@@ -116,9 +117,12 @@ def detect_spots_threshold(
     log_image_np = _to_numpy(log_image)
     image_np = _to_numpy(image)
 
-    min_distance = np.ceil(
-        compute_merge_radius_pixels(voxel_size, spot_radius, mode="vector")
-    ).astype(int)
+    if minimum_distance is None:
+        min_distance = np.ceil(
+            compute_merge_radius_pixels(voxel_size, spot_radius, mode="vector")
+        ).astype(int)
+    else:
+        min_distance = minimum_distance
     min_distance = _ensure_min_distance_tuple(min_distance, image_np.ndim)
 
     peak_mask = local_maximum_filter(log_image, min_distance=min_distance)
