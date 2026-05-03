@@ -3,33 +3,7 @@ from tqdm import tqdm
 from cucim.skimage.measure import label, regionprops
 import numpy as np
 from sklearn.cluster import DBSCAN
-
-
-# -----------------------------
-# EPS COMPUTATION (FIXED)
-# -----------------------------
-def compute_dbscan_eps_pixels(voxel_size, spot_radius, mode="mean"):
-    """
-    Convert nm spot radius → DBSCAN eps in PIXEL space (anisotropy-aware).
-    """
-
-    voxel_size = np.array(voxel_size)
-    spot_radius = np.array(spot_radius)
-
-    if mode == "mean":
-        r_nm = np.mean(spot_radius)
-    elif mode == "max":
-        r_nm = np.max(spot_radius)
-    else:
-        raise ValueError("mode must be 'mean' or 'max'")
-
-    # nm → voxel units per axis
-    r_vox = r_nm / voxel_size
-
-    # isotropic collapse
-    return np.linalg.norm(r_vox)
-
-
+from gpufish.functions.core.parameters_calculation import compute_dbscan_eps_pixels
 # -----------------------------
 # MAIN PIPELINE
 # -----------------------------
