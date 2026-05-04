@@ -3,6 +3,47 @@ import cupy as cp
 from skimage.measure import label as sk_label, regionprops as sk_regionprops
 from scipy.optimize import curve_fit    
 from skimage.morphology import dilation, square, cube
+from cupyx.scipy.ndimage import maximum_filter as cp_maximum_filter
+from scipy.ndimage import maximum_filter as np_maximum_filter
+
+
+def max_intensity_in_window(source, center, window=3):
+    """
+    Maximum intensity in a cubic window of size `window`^ndim around `center`.
+
+    Parameters
+    ----------
+    source : ndarray or cupy.ndarray
+        Original image (2D or 3D).
+    center : tuple of int
+        Index into `source`, same length as `source.ndim` (e.g. (y, x) or (z, y, x)).
+    window : int, optional
+        Odd window size along each axis (default 3).
+
+    Returns
+    -------
+    float
+        Max intensity in the neighborhood at `center` (from a max-filtered copy).
+    """
+    if window % 2 == 0:
+        raise ValueError("window must be odd (e.g., 3)")
+
+    try:
+        xp = cp.get_array_module(source)
+    except Exception:
+        xp = np
+
+    center = tuple(int(c) for c in center)
+    if len(center) != source.ndim:
+        raise ValueError(f"center ndim {len(center)} != source.ndim {source.ndim}")
+
+    size = (window,) * source.ndim
+
+    if xp is cp:
+        local_max = cp_maximum_filter(source, size=size)
+        return float(local_max[center])
+    local_max = np_maximum_filter(np.asarray(source), size=size)
+    return float(local_max[center])
 
 
 def compute_radial_sym(intensity_image):

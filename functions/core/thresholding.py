@@ -6,7 +6,7 @@ from gpufish.functions.core.filter import log_filter, local_maximum_filter
 from scipy import stats
 import warnings
 from skimage.measure import label as sk_label, regionprops as sk_regionprops
-from gpufish.functions.core.parameters_calculation import compute_dbscan_eps_pixels, compute_radial_sym, fit_gaussian, compute_contrast, compute_zscore, roundness_from_3d_region
+from gpufish.functions.core.parameters_calculation import compute_dbscan_eps_pixels, compute_radial_sym, fit_gaussian, compute_contrast, compute_zscore, roundness_from_3d_region, max_intensity_in_window
 from gpufish.functions.core.detection import collapse_large_regions, recover_large_clusters 
 from sklearn.cluster import DBSCAN
 
@@ -86,14 +86,11 @@ def regionprop_test_for_thresholds(
             if any(idx < 0 or idx >= image.shape[d] for d, idx in enumerate(coord)):
                 continue
 
-            if xp is cp:
-                center_intensity = float(cp.asnumpy(image[coord]))
-            else:
-                center_intensity = float(image[coord])
+            local_window_max_intensity = max_intensity_in_window(image, coord, window=3)
 
             candidate_idx.append(i)
             candidate_coords.append(coord)
-            candidate_intensities.append(center_intensity)
+            candidate_intensities.append(local_window_max_intensity)
 
         if len(candidate_coords) > 0:
             coords_np = np.asarray(candidate_coords, dtype=float)
@@ -143,17 +140,18 @@ def regionprop_test_for_thresholds(
             if any(idx < 0 or idx >= image.shape[i] for i, idx in enumerate(coords)):
                 continue
 
-            center_intensity = float(image[coords])
+            # Local max in a small window on the original image (not strict global max).
+            local_window_max_intensity = max_intensity_in_window(image, coords, window=3)
 
             try:
                 # --- Existing regionprops ---
                 if rp == "sbr":
                     if r.mean_intensity <= 0:
                         continue
-                    value = center_intensity / float(rr.mean_intensity)
+                    value = local_window_max_intensity / float(rr.mean_intensity)
 
                 elif rp in ["exceeding", "center-mean"]:
-                    value = center_intensity - rr.mean_intensity
+                    value = local_window_max_intensity - rr.mean_intensity
                 
 
                 elif rp == "weighted_centroid_distance":
@@ -198,7 +196,7 @@ def regionprop_test_for_thresholds(
             if not np.isfinite(value):
                 continue
 
-            centers.append(center_intensity)
+            centers.append(local_window_max_intensity)
             values.append(value)
 
         if len(centers) == 0:
